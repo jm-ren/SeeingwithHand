@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
-import { PlayCircle, StopCircle, LineChart } from "lucide-react";
+import { PlayCircle, StopCircle, LineChart, RotateCcw } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -20,18 +20,24 @@ interface SessionControlsProps {
   onStart?: () => void;
   onStop?: () => void;
   onTransform?: () => void;
+  onReset?: () => void;
   isRecording?: boolean;
   disabled?: boolean;
+  countdown?: number;
+  showCountdown?: boolean;
 }
 
 const SessionControls = ({
   onStart = () => {},
   onStop = () => {},
   onTransform = () => {},
+  onReset = () => {},
   isRecording = false,
   disabled = false,
+  countdown = 0,
+  showCountdown = false,
 }: SessionControlsProps) => {
-  const [showVisualization, setShowVisualization] = useState(true);
+  const [showVisualization, setShowVisualization] = useState(false);
 
   return (
     <Card className="w-full h-[60px] bg-background border-t flex items-center justify-between px-4 fixed bottom-0 left-0">
@@ -58,12 +64,33 @@ const SessionControls = ({
           </Tooltip>
         </TooltipProvider>
 
-        <Dialog open={showVisualization}>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={onReset}
+                disabled={disabled}
+              >
+                <RotateCcw className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Reset Canvas</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        <Dialog open={showVisualization} onOpenChange={setShowVisualization}>
           <DialogTrigger asChild>
             <Button
               variant="outline"
               size="icon"
-              onClick={() => setShowVisualization(true)}
+              onClick={() => {
+                setShowVisualization(true);
+                onTransform();
+              }}
               disabled={disabled}
             >
               <LineChart className="h-5 w-5" />
@@ -73,11 +100,12 @@ const SessionControls = ({
             <DialogHeader>
               <DialogTitle>Interaction Pattern Visualization</DialogTitle>
             </DialogHeader>
-            <div className="h-[400px] w-full bg-muted rounded-lg flex items-center justify-center">
-              <p className="text-muted-foreground">
-                Visualization will appear here
-              </p>
-            </div>
+            <canvas
+              id="visualizationCanvas"
+              className="h-[400px] w-full bg-muted rounded-lg"
+              width={600}
+              height={400}
+            />
           </DialogContent>
         </Dialog>
       </div>

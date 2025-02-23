@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import {
   Tooltip,
@@ -6,51 +6,150 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "./ui/tooltip";
-import { MousePointer2, PenLine, Square, Circle, Pencil } from "lucide-react";
+import {
+  MousePointer2,
+  PenLine,
+  Square,
+  Pencil,
+  DotSquare,
+  Group,
+} from "lucide-react";
+import { Divider } from "./ui/divider";
 
-type Tool = "point" | "line" | "frame" | "area" | "freehand";
+type Tool =
+  | "point"
+  | "line"
+  | "frame"
+  | "area"
+  | "freehand"
+  | "select"
+  | "group";
 
 interface ToolInfo {
   name: Tool;
   icon: React.ReactNode;
   shortcut: string;
+  section: "implicit" | "explicit" | "utility";
 }
 
 interface ToolboxPanelProps {
-  onToolSelect?: (tool: Tool) => void;
-  selectedTool?: Tool;
+  onToolSelect: (tool: Tool) => void;
+  selectedTool: Tool;
+  selectedCount: number;
 }
 
 const tools: ToolInfo[] = [
-  { name: "point", icon: <MousePointer2 size={24} />, shortcut: "P" },
-  { name: "line", icon: <PenLine size={24} />, shortcut: "L" },
-  { name: "frame", icon: <Square size={24} />, shortcut: "F" },
-  { name: "area", icon: <Circle size={24} />, shortcut: "A" },
-  { name: "freehand", icon: <Pencil size={24} />, shortcut: "D" },
+  {
+    name: "freehand",
+    icon: <Pencil size={17} />,
+    shortcut: "F",
+    section: "implicit",
+  },
+  {
+    name: "point",
+    icon: <DotSquare size={17} />,
+    shortcut: "1",
+    section: "explicit",
+  },
+  {
+    name: "line",
+    icon: <PenLine size={17} />,
+    shortcut: "2",
+    section: "explicit",
+  },
+  {
+    name: "frame",
+    icon: <Square size={17} />,
+    shortcut: "3",
+    section: "explicit",
+  },
+  {
+    name: "area",
+    icon: (
+      <div className="relative">
+        <div
+          className="absolute inset-0 rounded-sm"
+          style={{
+            background: `repeating-linear-gradient(
+              45deg,
+              rgba(0, 0, 0, 0.5),
+              rgba(0, 0, 0, 0.5) 1px,
+              transparent 1px,
+              transparent 4px
+            )`,
+          }}
+        />
+        <Square size={17} className="text-black/50" />
+      </div>
+    ),
+    shortcut: "4",
+    section: "explicit",
+  },
+  {
+    name: "select",
+    icon: <MousePointer2 size={17} />,
+    shortcut: "S",
+    section: "utility",
+  },
+  {
+    name: "group",
+    icon: <Group size={17} />,
+    shortcut: "G",
+    section: "utility",
+  },
 ];
 
 const ToolboxPanel = ({
-  onToolSelect = () => {},
-  selectedTool = "point",
+  onToolSelect,
+  selectedTool,
+  selectedCount,
 }: ToolboxPanelProps) => {
   const [activeTool, setActiveTool] = useState<Tool>(selectedTool);
 
+  // Group button enabled state
+  const groupButtonEnabled = selectedCount >= 2;
+
+  // Update active tool when selected tool changes from parent
+  useEffect(() => {
+    setActiveTool(selectedTool);
+  }, [selectedTool]);
+
   const handleToolClick = (tool: Tool) => {
+    if (tool === "group" && !groupButtonEnabled) {
+      return; // Don't allow group selection if not enough items selected
+    }
     setActiveTool(tool);
     onToolSelect(tool);
   };
 
-  return (
-    <div className="h-full w-20 bg-background border-r border-border flex flex-col items-center py-4 gap-4">
-      <TooltipProvider>
-        {tools.map((tool) => (
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      const tool = tools.find((t) => t.shortcut === e.key);
+      if (tool) {
+        handleToolClick(tool.name);
+      }
+    };
+
+    window.addEventListener("keypress", handleKeyPress);
+    return () => window.removeEventListener("keypress", handleKeyPress);
+  }, []);
+
+  const renderToolSection = (section: "implicit" | "explicit" | "utility") => {
+    const sectionTools = tools.filter((tool) => tool.section === section);
+    return (
+      <div className="flex flex-col items-center gap-[28px]">
+        {sectionTools.map((tool) => (
           <Tooltip key={tool.name}>
             <TooltipTrigger asChild>
               <Button
                 variant={activeTool === tool.name ? "secondary" : "ghost"}
-                size="icon"
-                className="w-12 h-12"
+                className="w-[28px] h-[28px] p-[4.4px]"
                 onClick={() => handleToolClick(tool.name)}
+                disabled={tool.name === "group" && !groupButtonEnabled}
+                style={{
+                  opacity:
+                    tool.name === "group" && !groupButtonEnabled ? 0.5 : 1,
+                }}
               >
                 {tool.icon}
               </Button>
@@ -65,6 +164,18 @@ const ToolboxPanel = ({
             </TooltipContent>
           </Tooltip>
         ))}
+      </div>
+    );
+  };
+
+  return (
+    <div className="w-[56px] bg-[#faf9f7] border border-[#b0b0b0] rounded-[12px] flex flex-col items-center py-[22px] px-[14px] gap-[20px]">
+      <TooltipProvider>
+        {renderToolSection("implicit")}
+        <Divider />
+        {renderToolSection("explicit")}
+        <Divider />
+        {renderToolSection("utility")}
       </TooltipProvider>
     </div>
   );
