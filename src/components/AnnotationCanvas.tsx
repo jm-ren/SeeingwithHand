@@ -174,11 +174,19 @@ const AnnotationCanvas = ({
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
+    
+    // Calculate the scale factors between canvas and display dimensions
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
+    
+    // Get the raw canvas coordinates
+    const rawX = (e.clientX - rect.left) * scaleX;
+    const rawY = (e.clientY - rect.top) * scaleY;
+    
+    // Adjust for the current canvas transformation
     return {
-      x: ((e.clientX - rect.left) * scaleX - position.x) / scale,
-      y: ((e.clientY - rect.top) * scaleY - position.y) / scale,
+      x: (rawX - position.x) / scale,
+      y: (rawY - position.y) / scale
     };
   };
 
