@@ -44,6 +44,7 @@ interface AnnotationCanvasProps {
   onSelectionChange?: (selectedCount: number) => void;
   initialAnnotations?: Annotation[];
   selectedTool?: Tool;
+  onToolChange?: (tool: Tool) => void;
 }
 
 const AnnotationCanvas = ({
@@ -52,6 +53,7 @@ const AnnotationCanvas = ({
   onSelectionChange = () => {},
   initialAnnotations = [],
   selectedTool = "point",
+  onToolChange = () => {},
 }: AnnotationCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -471,45 +473,108 @@ const AnnotationCanvas = ({
     onAnnotationChange(annotations);
   }, [annotations, onSelectionChange, onAnnotationChange]);
 
+  // Add keyup listener to clear selections when Shift is released
   useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === "g") {
-        handleGroupCreation();
+    const handleKeyUp = (e: KeyboardEvent) => {
+      // Check if the released key was Shift
+      if (e.key === 'Shift') {
+        // Clear all selections when Shift key is released
+        const hasSelectedAnnotations = annotations.some(a => a.selected);
+        if (hasSelectedAnnotations) {
+          setAnnotations(annotations.map(a => ({ ...a, selected: false })));
+        }
       }
     };
 
-    window.addEventListener("keypress", handleKeyPress);
-    return () => window.removeEventListener("keypress", handleKeyPress);
-  }, [handleGroupCreation]);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => window.removeEventListener("keyup", handleKeyUp);
+  }, [annotations]);
+
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Prevent triggering shortcuts when typing in input fields
+      if (e.target instanceof HTMLInputElement || 
+          e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
+      // Add tool selection keyboard shortcuts
+      if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+        switch (e.key.toLowerCase()) {
+          case 'v':
+            onToolChange("select");
+            break;
+          case '`':
+            onToolChange("freehand");
+            break;
+          case ' ': // Space key
+            e.preventDefault(); // Prevent page scrolling
+            handleGroupCreation();
+            break;
+          case "p":
+            onToolChange("point");
+            break;
+          case "l":
+            onToolChange("line");
+            break;
+          case "r":
+            onToolChange("frame");
+            break;
+          case "a":
+            onToolChange("area");
+            break;
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyPress); // Changed from keypress to keydown to capture space key
+    return () => window.removeEventListener("keydown", handleKeyPress);
+  }, [handleGroupCreation, onToolChange]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    const point = getCanvasPoint(e);
+    
+    // Only enable selection when the Shift key is pressed or select tool is active
+    if (e.shiftKey || selectedTool === "select") {
+      // Check if the user clicked on an annotation
+      let clickedAnnotation = false;
+      const updatedAnnotations = annotations.map((annotation) => {
+        // Check if this annotation was clicked
+        if (!clickedAnnotation && isPointInPath(point, annotation)) {
+          clickedAnnotation = true;
+          // Toggle selection state
+          return { ...annotation, selected: !annotation.selected };
+        }
+        
+        // When using Shift, keep existing selections, otherwise clear them
+        return {
+          ...annotation,
+          selected: e.shiftKey ? annotation.selected : false
+        };
+      });
+      
+      // If an annotation was clicked, update annotations and exit
+      if (clickedAnnotation) {
+        setAnnotations(updatedAnnotations);
+        return;
+      }
+    }
+    
+    // Clear all selections when clicking on empty space without Shift key
+    const hasSelectedAnnotations = annotations.some(a => a.selected);
+    if (!e.shiftKey && hasSelectedAnnotations) {
+      setAnnotations(annotations.map(a => ({ ...a, selected: false })));
+    }
+    
+    // Handle group creation
     if (selectedTool === "group") {
       handleGroupCreation();
       return;
     }
-
-    if (selectedTool === "select") {
-      const point = getCanvasPoint(e);
-      let clickedAnnotation = false;
-
-      setAnnotations(
-        annotations.map((annotation) => {
-          if (!clickedAnnotation && isPointInPath(point, annotation)) {
-            clickedAnnotation = true;
-            return { ...annotation, selected: !annotation.selected };
-          }
-          return {
-            ...annotation,
-            selected: e.shiftKey ? annotation.selected : false,
-          };
-        }),
-      );
-      return;
-    }
-
-    if (e.button === 0) {
+    
+    // If no selection was made (or shift wasn't pressed), proceed with drawing
+    if (e.button === 0 && selectedTool !== "select") {
       setIsDrawing(true);
-      const point = getCanvasPoint(e);
       setCurrentAnnotation([point]);
     }
   };
@@ -583,6 +648,21 @@ const AnnotationCanvas = ({
             <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
           </Tooltip>
         </TooltipProvider>
+      </div>
+      
+      {/* Keyboard Shortcuts Info */}
+      <div className="absolute bottom-4 right-4 bg-background/80 p-2 rounded-lg backdrop-blur-sm text-xs text-foreground/70">
+        <div>Keyboard Shortcuts:</div>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1">
+          <div><kbd>Shift</kbd> + <kbd>Click</kbd> - Select objects (selections cleared when Shift released)</div>
+          <div><kbd>V</kbd> - Select tool</div>
+          <div><kbd>`</kbd> - Freehand</div>
+          <div><kbd>Space</kbd> - Group</div>
+          <div><kbd>P</kbd> - Point</div>
+          <div><kbd>L</kbd> - Line</div>
+          <div><kbd>R</kbd> - Rectangle</div>
+          <div><kbd>A</kbd> - Area</div>
+        </div>
       </div>
 
       {/* Main Canvas */}

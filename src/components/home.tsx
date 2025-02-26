@@ -235,6 +235,7 @@ const Home = () => {
             onAnnotationChange={handleAnnotationChange}
             onSelectionChange={setSelectedCount}
             initialAnnotations={annotations}
+            onToolChange={handleToolSelect}
           />
         </div>
         <SessionControls
