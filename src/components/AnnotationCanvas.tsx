@@ -6,7 +6,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "./ui/tooltip";
-import { Undo2, ZoomIn, ZoomOut, Move } from "lucide-react";
+import { Undo2 } from "lucide-react";
 
 type Tool =
   | "point"
@@ -54,10 +54,8 @@ const AnnotationCanvas = ({
   selectedTool = "point",
 }: AnnotationCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
-  const [scale, setScale] = useState(1);
-  const [isPanning, setIsPanning] = useState(false);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentAnnotation, setCurrentAnnotation] = useState<Point[]>([]);
   const [annotations, setAnnotations] =
@@ -68,7 +66,7 @@ const AnnotationCanvas = ({
     width: number;
     height: number;
   } | null>(null);
-
+  
   // Initialize and load image
   useEffect(() => {
     const image = new Image();
@@ -92,6 +90,35 @@ const AnnotationCanvas = ({
     };
   }, [imageUrl]);
 
+  // Resize canvas to fit container
+  const resizeCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    
+    if (!canvas || !container) return;
+    
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    
+    drawCanvas();
+  }, []);
+
+  // Set up resize observer
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new ResizeObserver(resizeCanvas);
+    observer.observe(container);
+
+    // Initial resize
+    resizeCanvas();
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [resizeCanvas]);
+
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const image = imageRef.current;
@@ -103,11 +130,8 @@ const AnnotationCanvas = ({
 
     try {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.save();
-      ctx.translate(position.x, position.y);
-      ctx.scale(scale, scale);
-
-      // Calculate image dimensions
+      
+      // Calculate image dimensions to fit within canvas while maintaining aspect ratio
       const containerWidth = canvas.width;
       const containerHeight = canvas.height;
       const imageAspectRatio = imageDimensions.width / imageDimensions.height;
@@ -131,12 +155,10 @@ const AnnotationCanvas = ({
 
       // Draw annotations
       drawAnnotations(ctx);
-
-      ctx.restore();
     } catch (error) {
       console.error("Error in drawCanvas:", error);
     }
-  }, [scale, position, annotations, currentAnnotation, imageDimensions]);
+  }, [annotations, currentAnnotation, imageDimensions]);
 
   // Redraw canvas when dependencies change
   useEffect(() => {
@@ -172,21 +194,19 @@ const AnnotationCanvas = ({
 
   const getCanvasPoint = (e: React.MouseEvent): Point => {
     const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
+    if (!canvas || !imageDimensions) return { x: 0, y: 0 };
+    
     const rect = canvas.getBoundingClientRect();
     
-    // Calculate the scale factors between canvas and display dimensions
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    // Calculate relative position within canvas
+    const canvasX = e.clientX - rect.left;
+    const canvasY = e.clientY - rect.top;
     
-    // Get the raw canvas coordinates
-    const rawX = (e.clientX - rect.left) * scaleX;
-    const rawY = (e.clientY - rect.top) * scaleY;
-    
-    // Adjust for the current canvas transformation
+    // Convert to canvas coordinate system
+    // No need to adjust for scale or position since we removed those
     return {
-      x: (rawX - position.x) / scale,
-      y: (rawY - position.y) / scale
+      x: canvasX,
+      y: canvasY
     };
   };
 
@@ -373,14 +393,7 @@ const AnnotationCanvas = ({
 
   // Rest of your component implementation...
   // (To be continued in next artifact due to length)
-  const handleZoomIn = () => {
-    setScale((prev) => Math.min(prev * 1.2, 5));
-  };
-
-  const handleZoomOut = () => {
-    setScale((prev) => Math.max(prev / 1.2, 0.1));
-  };
-
+  
   const isPointInPath = (point: Point, annotation: Annotation): boolean => {
     const tolerance = 15;
     switch (annotation.type) {
@@ -494,9 +507,7 @@ const AnnotationCanvas = ({
       return;
     }
 
-    if (e.button === 1) {
-      setIsPanning(true);
-    } else if (e.button === 0) {
+    if (e.button === 0) {
       setIsDrawing(true);
       const point = getCanvasPoint(e);
       setCurrentAnnotation([point]);
@@ -504,12 +515,7 @@ const AnnotationCanvas = ({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (isPanning) {
-      setPosition((prev) => ({
-        x: prev.x + e.movementX,
-        y: prev.y + e.movementY,
-      }));
-    } else if (isDrawing) {
+    if (isDrawing) {
       const point = getCanvasPoint(e);
       if (selectedTool === "freehand") {
         setCurrentAnnotation((prev) => [...prev, point]);
@@ -520,9 +526,6 @@ const AnnotationCanvas = ({
   };
 
   const handleMouseUp = () => {
-    if (isPanning) {
-      setIsPanning(false);
-    }
     if (isDrawing) {
       setIsDrawing(false);
       if (currentAnnotation.length > 0) {
@@ -556,7 +559,7 @@ const AnnotationCanvas = ({
   };
 
   return (
-    <div className="relative w-full h-full bg-background overflow-hidden">
+    <div ref={containerRef} className="relative w-full h-full bg-background overflow-hidden">
       {/* Canvas Controls */}
       <div className="absolute top-4 right-4 flex gap-2 bg-background/80 p-2 rounded-lg backdrop-blur-sm">
         <TooltipProvider>
@@ -579,59 +582,15 @@ const AnnotationCanvas = ({
             </TooltipTrigger>
             <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
           </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleZoomIn}
-                className="h-8 w-8"
-              >
-                <ZoomIn className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Zoom In (Ctrl++)</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleZoomOut}
-                className="h-8 w-8"
-              >
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Zoom Out (Ctrl+-)</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className={`h-8 w-8 ${isPanning ? "bg-accent" : ""}`}
-              >
-                <Move className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Pan (Middle Mouse Button)</TooltipContent>
-          </Tooltip>
         </TooltipProvider>
       </div>
 
       {/* Main Canvas */}
       <canvas
         ref={canvasRef}
-        width={1600}
-        height={1067}
         style={{
           width: "100%",
           height: "100%",
-          objectFit: "contain",
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
