@@ -87,9 +87,21 @@ const Traceboard = ({
   countdown = 0,
   showCountdown = false,
 }: TraceboardProps) => {
+  // Helper function to generate a short group ID
+  const getShortGroupId = (groupId: string): string => {
+    if (!groupId) return "";
+    
+    // Extract the timestamp part after "group-"
+    const timestampPart = groupId.split("-")[1] || "";
+    
+    // Create a short ID using the last 5 characters of the timestamp
+    // This ensures IDs are unique but compact
+    return timestampPart.slice(-5);
+  };
+
   return (
-    <div className="w-96 h-full bg-background border-l">
-      <div className="p-4 border-b">
+    <div className="w-96 h-full bg-background border-l flex flex-col">
+      <div className="p-4 border-b flex-shrink-0">
         <h2 className="text-lg font-semibold">Interaction Timeline</h2>
         <p className="text-sm text-muted-foreground">
           {showCountdown ? (
@@ -102,7 +114,7 @@ const Traceboard = ({
         </p>
       </div>
 
-      <ScrollArea className="h-[calc(100%-5rem)]">
+      <ScrollArea className="flex-1 pb-[70px]">
         <div className="p-4 space-y-4">
           {traces.map((trace, index) => (
             <React.Fragment key={trace.id}>
@@ -113,8 +125,8 @@ const Traceboard = ({
                     {getToolIcon(trace.type)}
                     <Badge variant="secondary">{trace.type}</Badge>
                     {trace.groupId && (
-                      <Badge variant="outline" className="ml-2 text-xs overflow-ellipsis">
-                        Group: {trace.groupId.split("-")[1]}
+                      <Badge variant="outline" className="ml-2 text-xs">
+                        G:{getShortGroupId(trace.groupId)}
                       </Badge>
                     )}
                   </div>
