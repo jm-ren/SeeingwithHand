@@ -88,7 +88,7 @@ const Traceboard = ({
   showCountdown = false,
 }: TraceboardProps) => {
   return (
-    <div className="w-80 h-full bg-background border-l">
+    <div className="w-96 h-full bg-background border-l">
       <div className="p-4 border-b">
         <h2 className="text-lg font-semibold">Interaction Timeline</h2>
         <p className="text-sm text-muted-foreground">
@@ -113,7 +113,7 @@ const Traceboard = ({
                     {getToolIcon(trace.type)}
                     <Badge variant="secondary">{trace.type}</Badge>
                     {trace.groupId && (
-                      <Badge variant="outline" className="ml-2">
+                      <Badge variant="outline" className="ml-2 text-xs overflow-ellipsis">
                         Group: {trace.groupId.split("-")[1]}
                       </Badge>
                     )}
@@ -123,7 +123,7 @@ const Traceboard = ({
                     <span>{trace.timestamp}</span>
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground break-words">
                   {trace.coordinates}
                 </p>
               </Card>

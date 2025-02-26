@@ -650,21 +650,6 @@ const AnnotationCanvas = ({
         </TooltipProvider>
       </div>
       
-      {/* Keyboard Shortcuts Info */}
-      <div className="absolute bottom-4 right-4 bg-background/80 p-2 rounded-lg backdrop-blur-sm text-xs text-foreground/70">
-        <div>Keyboard Shortcuts:</div>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1">
-          <div><kbd>Shift</kbd> + <kbd>Click</kbd> - Select objects (selections cleared when Shift released)</div>
-          <div><kbd>V</kbd> - Select tool</div>
-          <div><kbd>`</kbd> - Freehand</div>
-          <div><kbd>Space</kbd> - Group</div>
-          <div><kbd>P</kbd> - Point</div>
-          <div><kbd>L</kbd> - Line</div>
-          <div><kbd>R</kbd> - Rectangle</div>
-          <div><kbd>A</kbd> - Area</div>
-        </div>
-      </div>
-
       {/* Main Canvas */}
       <canvas
         ref={canvasRef}
