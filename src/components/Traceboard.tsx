@@ -8,9 +8,10 @@ import { Clock, DotSquare, PenLine, Square, Pencil, Group } from "lucide-react";
 interface TraceItem {
   id: string;
   timestamp: string;
-  type: "point" | "line" | "frame" | "area" | "freehand" | "group";
+  type: "point" | "line" | "frame" | "area" | "freehand" | "group" | "select";
   coordinates: string;
   groupId?: string;
+  numericTimestamp?: number;
 }
 
 interface TraceboardProps {
@@ -77,6 +78,10 @@ const getToolIcon = (type: TraceItem["type"]) => {
       return <Pencil className="h-4 w-4" />;
     case "group":
       return <Group className="h-4 w-4" />;
+    case "select":
+      return <div className="h-4 w-4 border border-current rounded-sm p-0.5 flex items-center justify-center">
+        <div className="w-full h-full bg-primary-foreground rounded-sm"></div>
+      </div>;
     default:
       return <Pencil className="h-4 w-4" />;
   }

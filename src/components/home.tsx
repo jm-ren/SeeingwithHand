@@ -30,9 +30,10 @@ interface Annotation {
 interface TraceItem {
   id: string;
   timestamp: string;
-  type: Tool | "group";
+  type: "point" | "line" | "frame" | "area" | "freehand" | "group" | "select";
   coordinates: string;
   groupId?: string;
+  numericTimestamp?: number;
 }
 
 const Home = () => {
@@ -100,6 +101,7 @@ const Home = () => {
         .map((p) => `(${Math.round(p.x)},${Math.round(p.y)})`)
         .join(", "),
       groupId: annotation.groupId,
+      numericTimestamp: annotation.timestamp
     }));
 
     const groupTraces = annotations
@@ -109,22 +111,21 @@ const Home = () => {
           (g) => g.id === `group-${annotation.groupId}`,
         );
         if (!groupExists) {
+          const groupTimestamp = parseInt(annotation.groupId?.split("-")[1] || "0");
           groups.push({
             id: `group-${annotation.groupId}`,
-            timestamp: new Date(
-              parseInt(annotation.groupId?.split("-")[1] || "0"),
-            ).toLocaleTimeString(),
+            timestamp: new Date(groupTimestamp).toLocaleTimeString(),
             type: "group",
             coordinates: "Group created",
             groupId: annotation.groupId,
+            numericTimestamp: groupTimestamp
           });
         }
         return groups;
       }, []);
 
     return [...annotationTraces, ...groupTraces].sort(
-      (a, b) =>
-        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+      (a, b) => (a.numericTimestamp || 0) - (b.numericTimestamp || 0)
     );
   }, [annotations]);
 
