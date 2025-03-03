@@ -119,26 +119,36 @@ const Traceboard = ({
           {traces.map((trace, index) => (
             <React.Fragment key={trace.id}>
               {index > 0 && <Separator className="my-4" />}
-              <Card className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    {getToolIcon(trace.type)}
-                    <Badge variant="secondary">{trace.type}</Badge>
-                    {trace.groupId && (
-                      <Badge variant="outline" className="ml-2 text-xs">
-                        G:{getShortGroupId(trace.groupId)}
-                      </Badge>
-                    )}
+              <div 
+                className="transform-gpu" 
+                style={{ 
+                  animation: `smoothFadeIn 500ms ${index * 60}ms forwards ease-out`,
+                  opacity: 0,
+                  transform: 'translateY(20px)',
+                  willChange: 'transform, opacity'
+                }}
+              >
+                <Card className="p-4 transition-transform duration-300 hover:translate-y-[-2px] hover:shadow-md">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      {getToolIcon(trace.type)}
+                      <Badge variant="secondary">{trace.type}</Badge>
+                      {trace.groupId && (
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          G:{getShortGroupId(trace.groupId)}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      <span>{trace.timestamp}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Clock className="h-4 w-4" />
-                    <span>{trace.timestamp}</span>
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground break-words">
-                  {trace.coordinates}
-                </p>
-              </Card>
+                  <p className="text-sm text-muted-foreground break-words">
+                    {trace.coordinates}
+                  </p>
+                </Card>
+              </div>
             </React.Fragment>
           ))}
         </div>

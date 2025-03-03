@@ -1,0 +1,322 @@
+import React, { useEffect, useRef, useState } from "react";
+import { Separator } from "./ui/separator";
+import { Card } from "./ui/card";
+import { Badge } from "./ui/badge";
+import { Clock, DotSquare, PenLine, Square, Pencil, Group } from "lucide-react";
+
+interface TraceItem {
+  id: string;
+  timestamp: string;
+  type: "point" | "line" | "frame" | "area" | "freehand" | "group";
+  coordinates: string;
+  groupId?: string;
+  // Add a creation timestamp for tracking age
+  createdAt?: number;
+}
+
+interface TraceboardProps {
+  traces?: TraceItem[];
+  countdown?: number;
+  showCountdown?: boolean;
+  sessionControlsHeight?: number;
+}
+
+const defaultTraces: TraceItem[] = [
+  {
+    id: "1",
+    timestamp: "10:30:15",
+    type: "point",
+    coordinates: "x: 100, y: 200",
+  },
+  {
+    id: "2",
+    timestamp: "10:30:20",
+    type: "line",
+    coordinates: "start(100,200), end(300,400)",
+  },
+  {
+    id: "3",
+    timestamp: "10:30:25",
+    type: "frame",
+    coordinates: "top-left(50,50), bottom-right(150,150)",
+  },
+  {
+    id: "4",
+    timestamp: "10:30:30",
+    type: "group",
+    coordinates: "Group created",
+    groupId: "group-1234567890",
+  },
+];
+
+const getToolIcon = (type: TraceItem["type"]) => {
+  switch (type) {
+    case "point":
+      return <DotSquare className="h-4 w-4" />;
+    case "line":
+      return <PenLine className="h-4 w-4" />;
+    case "frame":
+      return <Square className="h-4 w-4" />;
+    case "area":
+      return (
+        <div className="relative">
+          <div
+            className="absolute inset-0 rounded-sm"
+            style={{
+              background: `repeating-linear-gradient(
+                45deg,
+                rgba(0, 0, 0, 0.5),
+                rgba(0, 0, 0, 0.5) 1px,
+                transparent 1px,
+                transparent 4px
+              )`,
+            }}
+          />
+          <Square className="h-4 w-4 text-black/50" />
+        </div>
+      );
+    case "freehand":
+      return <Pencil className="h-4 w-4" />;
+    case "group":
+      return <Group className="h-4 w-4" />;
+    default:
+      return <Pencil className="h-4 w-4" />;
+  }
+};
+
+const Traceboard = ({
+  traces = defaultTraces,
+  countdown = 0,
+  showCountdown = false,
+  sessionControlsHeight = 80,
+}: TraceboardProps) => {
+  // State for tracking opacity values of each trace
+  const [opacityValues, setOpacityValues] = useState<Record<string, number>>({});
+  
+  // Ref for the scroll container
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Track whether we should maintain scroll position at bottom
+  const shouldScrollToBottomRef = useRef<boolean>(true);
+  
+  // Track previous traces length
+  const prevTracesLengthRef = useRef<number>(traces.length);
+  
+  // Constants for fading effect
+  const fadeInterval = 10000; // 10 seconds between fade steps
+  const fadeStep = 0.1; // 10% opacity decrease per step
+  const minOpacity = 0.4; // 40% minimum opacity
+
+  // Helper function to generate a short group ID
+  const getShortGroupId = (groupId: string): string => {
+    if (!groupId) return "";
+    
+    // Extract the timestamp part after "group-"
+    const timestampPart = groupId.split("-")[1] || "";
+    
+    // Create a short ID using the last 5 characters of the timestamp
+    // This ensures IDs are unique but compact
+    return timestampPart.slice(-5);
+  };
+
+  // Function to maintain scroll position at bottom
+  const maintainBottomScroll = () => {
+    if (!scrollContainerRef.current || !shouldScrollToBottomRef.current) return;
+    
+    const scrollContainer = scrollContainerRef.current;
+    scrollContainer.scrollTop = scrollContainer.scrollHeight;
+  };
+
+  // Handle scroll events to detect if user has scrolled up
+  const handleScroll = () => {
+    if (!scrollContainerRef.current) return;
+    
+    const scrollContainer = scrollContainerRef.current;
+    const isScrolledToBottom = 
+      scrollContainer.scrollHeight - scrollContainer.scrollTop <= 
+      scrollContainer.clientHeight + 50; // Add a small buffer
+    
+    // Only change if we're not already at the correct setting
+    if (shouldScrollToBottomRef.current !== isScrolledToBottom) {
+      shouldScrollToBottomRef.current = isScrolledToBottom;
+    }
+  };
+
+  // Process traces to add timestamps if they don't exist
+  const tracesWithTimestamps = traces.map(trace => {
+    if (!trace.createdAt) {
+      return { ...trace, createdAt: Date.now() };
+    }
+    return trace;
+  });
+
+  // Effect for updating opacity values over time
+  useEffect(() => {
+    // Initialize opacity values for new traces
+    const newOpacityValues = { ...opacityValues };
+    let hasNewTraces = false;
+    
+    tracesWithTimestamps.forEach(trace => {
+      if (!opacityValues[trace.id]) {
+        newOpacityValues[trace.id] = 1; // Start at 100% opacity
+        hasNewTraces = true;
+      }
+    });
+    
+    if (hasNewTraces) {
+      setOpacityValues(newOpacityValues);
+    }
+    
+    // Set up interval for decreasing opacity
+    const intervalId = setInterval(() => {
+      const now = Date.now();
+      const updatedOpacities = { ...opacityValues };
+      let hasChanges = false;
+      
+      tracesWithTimestamps.forEach(trace => {
+        const age = now - (trace.createdAt || now);
+        const fadeSteps = Math.floor(age / fadeInterval);
+        const targetOpacity = Math.max(1 - (fadeSteps * fadeStep), minOpacity);
+        
+        if (updatedOpacities[trace.id] !== targetOpacity) {
+          updatedOpacities[trace.id] = targetOpacity;
+          hasChanges = true;
+        }
+      });
+      
+      if (hasChanges) {
+        setOpacityValues(updatedOpacities);
+      }
+    }, 1000); // Check every second
+    
+    return () => clearInterval(intervalId);
+  }, [tracesWithTimestamps, opacityValues]);
+
+  // Effect for scroll behavior with new traces
+  useEffect(() => {
+    // Scroll to bottom if we have new traces or should maintain bottom position
+    if (shouldScrollToBottomRef.current || traces.length > prevTracesLengthRef.current) {
+      // Use RAF to ensure DOM has updated
+      requestAnimationFrame(() => {
+        maintainBottomScroll();
+      });
+    }
+    
+    // Update the previous traces length
+    prevTracesLengthRef.current = traces.length;
+  }, [traces]);
+
+  // Initial setup
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) return;
+    
+    // Add scroll event listener
+    scrollContainer.addEventListener('scroll', handleScroll);
+    
+    // Initial scroll to bottom
+    maintainBottomScroll();
+    
+    return () => {
+      if (scrollContainer) {
+        scrollContainer.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, []);
+  
+  // Get the ordered traces (newest at the bottom)
+  const orderedTraces = [...traces];
+
+  return (
+    <div className="w-96 h-full flex flex-col border-l bg-background">
+      {/* Header */}
+      <div className="p-3 border-b flex-shrink-0">
+        <h2 className="text-lg font-semibold">Interaction Timeline</h2>
+        <p className="text-sm text-muted-foreground">
+          {showCountdown ? (
+            <span className="font-medium text-primary">
+              Starting in {countdown}...
+            </span>
+          ) : (
+            "Chronological record of annotations"
+          )}
+        </p>
+      </div>
+
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-hidden">
+        <div
+          ref={scrollContainerRef}
+          className="h-full overflow-y-auto overflow-x-hidden"
+          style={{ 
+            minHeight: "0",
+            maxHeight: `calc(100vh - ${sessionControlsHeight}px - 72px)`
+          }}
+        >
+          <div className="p-2 pb-4">
+            {orderedTraces.map((trace, index) => {
+              // Calculate opacity based on age
+              const opacity = opacityValues[trace.id] || 1;
+              
+              return (
+                <div 
+                  key={trace.id}
+                  className="opacity-0 mb-2"
+                  style={{
+                    animation: `fadeIn 0.5s ease-out forwards`,
+                    animationDelay: `${Math.min(index, 10) * 50}ms`,
+                  }}
+                >
+                  <Card 
+                    className="p-3 shadow-sm hover:shadow transition-all duration-300"
+                    style={{
+                      opacity: opacity,
+                      transition: 'opacity 1s ease',
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        {getToolIcon(trace.type)}
+                        <Badge variant="secondary">{trace.type}</Badge>
+                        {trace.groupId && (
+                          <Badge variant="outline" className="ml-2 text-xs">
+                            G:{getShortGroupId(trace.groupId)}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Clock className="h-4 w-4" />
+                        <span>{trace.timestamp}</span>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground break-words">
+                      {trace.coordinates}
+                    </p>
+                  </Card>
+                  {index < orderedTraces.length - 1 && (
+                    <Separator className="my-2" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}} />
+    </div>
+  );
+};
+
+export default Traceboard; 
