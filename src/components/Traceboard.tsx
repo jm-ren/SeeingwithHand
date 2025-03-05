@@ -1,9 +1,9 @@
-import React from "react";
+import React, { useEffect, useRef, useState, useLayoutEffect } from "react";
 import { ScrollArea } from "./ui/scroll-area";
-import { Separator } from "./ui/separator";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Clock, DotSquare, PenLine, Square, Pencil, Group } from "lucide-react";
+import { Button } from "./ui/button";
+import { Clock, DotSquare, PenLine, Square, Pencil, Group, ArrowDown } from "lucide-react";
 
 interface TraceItem {
   id: string;
@@ -92,6 +92,11 @@ const Traceboard = ({
   countdown = 0,
   showCountdown = false,
 }: TraceboardProps) => {
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const previousTracesLength = useRef(traces.length);
+  const isNearBottom = useRef(true);
+  
   // Helper function to generate a short group ID
   const getShortGroupId = (groupId: string): string => {
     if (!groupId) return "";
@@ -103,11 +108,95 @@ const Traceboard = ({
     // This ensures IDs are unique but compact
     return timestampPart.slice(-5);
   };
+  
+  // Scroll to the bottom of the timeline
+  const scrollToBottom = () => {
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+    }
+  };
+  
+  // Check if scroll is near bottom
+  const checkIfNearBottom = () => {
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+        const threshold = 50; // Consider "near bottom" if within 50px of bottom
+        return scrollTop >= scrollHeight - clientHeight - threshold;
+      }
+    }
+    return true; // Default to true if we can't determine
+  };
+  
+  // Handle scroll events to show/hide the scroll button
+  const handleScroll = () => {
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+        const threshold = 20;
+        const nearBottom = scrollTop >= scrollHeight - clientHeight - threshold;
+        
+        setShowScrollButton(!nearBottom);
+        isNearBottom.current = nearBottom;
+      }
+    }
+  };
+  
+  // Set up scroll event listener
+  useEffect(() => {
+    const scrollContainer = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', handleScroll);
+      return () => scrollContainer.removeEventListener('scroll', handleScroll);
+    }
+  }, []);
+  
+  // More reliable auto-scroll using useLayoutEffect and checking if new traces were added
+  useEffect(() => {
+    // If there are new traces added
+    if (traces.length > previousTracesLength.current) {
+      // Use a sequence of timers to make sure we scroll after DOM updates
+      const timerOne = setTimeout(() => {
+        requestAnimationFrame(() => {
+          // Only auto-scroll if we were already at the bottom (or near it)
+          if (isNearBottom.current) {
+            const timerTwo = setTimeout(() => {
+              scrollToBottom();
+            }, 50); // Small delay to ensure rendering completes
+            return () => clearTimeout(timerTwo);
+          }
+        });
+      }, 10);
+      return () => clearTimeout(timerOne);
+    }
+    
+    // Always update the reference count
+    previousTracesLength.current = traces.length;
+  }, [traces.length]);
+  
+  // Initial scroll to bottom when component mounts
+  useEffect(() => {
+    if (traces.length > 0) {
+      // Initial delay to let the component fully render
+      const timer = setTimeout(() => {
+        scrollToBottom();
+        isNearBottom.current = true;
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   return (
-    <div className="w-96 h-full bg-background border-l flex flex-col">
+    <div className="w-96 h-full bg-background border-l flex flex-col relative">
       <div className="p-4 border-b flex-shrink-0">
-        <h2 className="text-lg font-semibold">Interaction Timeline</h2>
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold">Interaction Timeline</h2>
+        </div>
         <p className="text-sm text-muted-foreground">
           {showCountdown ? (
             <span className="font-medium text-primary">
@@ -119,45 +208,51 @@ const Traceboard = ({
         </p>
       </div>
 
-      <ScrollArea className="flex-1 pb-[70px]">
-        <div className="p-4 space-y-4">
-          {traces.map((trace, index) => (
-            <React.Fragment key={trace.id}>
-              {index > 0 && <Separator className="my-4" />}
-              <div 
-                className="transform-gpu" 
-                style={{ 
-                  animation: `smoothFadeIn 500ms ${index * 60}ms forwards ease-out`,
-                  opacity: 0,
-                  transform: 'translateY(20px)',
-                  willChange: 'transform, opacity'
-                }}
-              >
-                <Card className="p-4 transition-transform duration-300 hover:translate-y-[-2px] hover:shadow-md">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      {getToolIcon(trace.type)}
-                      <Badge variant="secondary">{trace.type}</Badge>
+      <ScrollArea ref={scrollAreaRef} className="flex-1 pb-[70px]">
+        <div className="p-4 space-y-3">
+          {traces.map((trace) => (
+            <Card 
+              key={trace.id}
+              className="p-3 transition-all hover:translate-y-[-2px] hover:shadow-md"
+            >
+              <div className="flex items-start gap-2">
+                <div className="bg-muted p-1.5 rounded">
+                  {getToolIcon(trace.type)}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <Badge variant="outline" className="text-xs font-medium">
+                      {trace.type.charAt(0).toUpperCase() + trace.type.slice(1)}
                       {trace.groupId && (
-                        <Badge variant="outline" className="ml-2 text-xs">
-                          G:{getShortGroupId(trace.groupId)}
-                        </Badge>
+                        <span className="ml-1 text-muted-foreground">
+                          #{getShortGroupId(trace.groupId)}
+                        </span>
                       )}
-                    </div>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      <span>{trace.timestamp}</span>
-                    </div>
+                    </Badge>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {trace.timestamp}
+                    </span>
                   </div>
-                  <p className="text-sm text-muted-foreground break-words">
-                    {trace.coordinates}
-                  </p>
-                </Card>
+                  <p className="text-sm mt-1">{trace.coordinates}</p>
+                </div>
               </div>
-            </React.Fragment>
+            </Card>
           ))}
         </div>
       </ScrollArea>
+
+      {/* Jump to Latest button - only show when not at bottom */}
+      {showScrollButton && (
+        <Button
+          className="absolute bottom-4 right-4 shadow-md flex items-center gap-1"
+          size="sm"
+          onClick={scrollToBottom}
+        >
+          <ArrowDown className="h-4 w-4" />
+          Jump to Latest
+        </Button>
+      )}
     </div>
   );
 };
