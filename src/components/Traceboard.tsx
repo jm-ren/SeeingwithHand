@@ -193,6 +193,26 @@ const Traceboard = ({
 
   return (
     <div className="w-96 h-full bg-background border-l flex flex-col relative">
+      <style>
+        {`
+          @keyframes slideInUp {
+            0% {
+              opacity: 0.6;
+              transform: translateY(15px);
+            }
+            100% {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          .animate-slide-in {
+            animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            will-change: transform, opacity;
+            opacity: 0.6;
+          }
+        `}
+      </style>
+
       <div className="p-4 border-b flex-shrink-0">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-semibold">Interaction Timeline</h2>
@@ -210,10 +230,13 @@ const Traceboard = ({
 
       <ScrollArea ref={scrollAreaRef} className="flex-1 pb-[70px]">
         <div className="p-4 space-y-3">
-          {traces.map((trace) => (
+          {traces.map((trace, index) => (
             <Card 
               key={trace.id}
-              className="p-3 transition-all hover:translate-y-[-2px] hover:shadow-md"
+              className="p-3 transition-all hover:translate-y-[-2px] hover:shadow-md animate-slide-in"
+              style={{
+                animationDelay: `${Math.min(index * 60, 400)}ms`
+              }}
             >
               <div className="flex items-start gap-2">
                 <div className="bg-muted p-1.5 rounded">
