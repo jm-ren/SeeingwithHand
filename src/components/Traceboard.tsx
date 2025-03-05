@@ -87,6 +87,11 @@ const getToolIcon = (type: TraceItem["type"]) => {
   }
 };
 
+// Helper function to format freehand trace coordinates
+const formatFreehandTrace = (coordinates: string) => {
+  return "Stroke drawn";
+};
+
 const Traceboard = ({
   traces = defaultTraces,
   countdown = 0,
@@ -167,7 +172,7 @@ const Traceboard = ({
           if (isNearBottom.current) {
             const timerTwo = setTimeout(() => {
               scrollToBottom();
-            }, 50); // Small delay to ensure rendering completes
+            }, 600); // Match the animation duration
             return () => clearTimeout(timerTwo);
           }
         });
@@ -195,36 +200,52 @@ const Traceboard = ({
     <div className="w-96 h-full bg-background border-l flex flex-col relative">
       <style>
         {`
-          @keyframes slideInUp {
-            0% {
-              opacity: 0.6;
-              transform: translateY(15px);
+          @keyframes fadeIn {
+            from {
+              opacity: 0;
             }
-            100% {
+            to {
               opacity: 1;
-              transform: translateY(0);
             }
           }
 
-          @keyframes slowDrift {
+          @keyframes continuousDrift {
             0% {
               transform: translateY(0);
             }
             100% {
-              transform: translateY(-2px);
+              transform: translateY(-2000px);
             }
           }
 
           .animate-slide-in {
+            opacity: 0;
             animation: 
-              slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards,
-              slowDrift 4s ease-in-out infinite alternate;
+              fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards,
+              continuousDrift 300s linear;
             will-change: transform, opacity;
-            opacity: 0.6;
+            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
           }
 
-          .time-gap {
-            position: relative;
+          /* Add transition to the trace container */
+          [data-trace-container] {
+            min-height: 88px; /* Fixed minimum height to prevent layout shifts */
+            transform-origin: center bottom;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+
+          /* Add transition to the scroll container */
+          [data-radix-scroll-area-viewport] {
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            scroll-behavior: smooth;
+            overflow-anchor: auto; /* Better scroll anchoring */
+          }
+
+          /* Smooth container transitions */
+          .traces-container {
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+            will-change: transform;
           }
 
           .time-gap::before {
@@ -242,6 +263,17 @@ const Traceboard = ({
               transparent
             );
             opacity: 0.5;
+            transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+
+          .time-gap-text {
+            opacity: 0.7;
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            font-variant-numeric: tabular-nums;
+          }
+
+          .time-gap:hover .time-gap-text {
+            opacity: 1;
           }
         `}
       </style>
@@ -262,22 +294,35 @@ const Traceboard = ({
       </div>
 
       <ScrollArea ref={scrollAreaRef} className="flex-1 pb-[70px]">
-        <div className="p-4">
+        <div className="p-4 traces-container">
           {traces.map((trace, index) => {
-            // Calculate time gap from previous trace
             const timeGap = index > 0 
-              ? (trace.numericTimestamp || 0) - (traces[index - 1].numericTimestamp || 0)
+              ? Math.max(0, (trace.numericTimestamp || 0) - (traces[index - 1].numericTimestamp || 0))
               : 0;
             
-            // Convert time gap to pixels (e.g., 1 second = 2px, with a min and max)
-            const gapHeight = Math.min(Math.max(timeGap / 1000 * 2, 12), 100);
+            const gapHeight = Math.min(Math.max(timeGap / 1000 * 2, 16), 100);
+            const animationDelay = `${Math.min(index * 100, 800)}ms`;
+
+            const formatTimeGap = (ms: number) => {
+              if (ms < 1000) return `${ms}ms`;
+              const seconds = Math.round(ms / 100) / 10;
+              return `${seconds}s`;
+            };
 
             return (
-              <div key={trace.id} style={{ marginBottom: index < traces.length - 1 ? gapHeight : 0 }}>
+              <div 
+                key={trace.id} 
+                data-trace-container
+                style={{ 
+                  marginBottom: index < traces.length - 1 ? gapHeight : 0,
+                  animationDelay
+                }}
+              >
                 <Card 
                   className="p-3 transition-all hover:translate-y-[-2px] hover:shadow-md animate-slide-in"
                   style={{
-                    animationDelay: `${Math.min(index * 60, 400)}ms`
+                    animationDelay,
+                    height: '100%'
                   }}
                 >
                   <div className="flex items-start gap-2">
@@ -299,19 +344,14 @@ const Traceboard = ({
                           {trace.timestamp}
                         </span>
                       </div>
-                      <p className="text-sm mt-1">{trace.coordinates}</p>
+                      <p className="text-sm mt-1">
+                        {trace.type === 'freehand' 
+                          ? formatFreehandTrace(trace.coordinates)
+                          : trace.coordinates}
+                      </p>
                     </div>
                   </div>
                 </Card>
-                {index < traces.length - 1 && timeGap > 1000 && (
-                  <div className="time-gap" style={{ height: gapHeight }}>
-                    {timeGap > 5000 && (
-                      <span className="absolute left-8 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                        {Math.round(timeGap / 1000)}s
-                      </span>
-                    )}
-                  </div>
-                )}
               </div>
             );
           })}
