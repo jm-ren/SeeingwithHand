@@ -205,10 +205,43 @@ const Traceboard = ({
               transform: translateY(0);
             }
           }
+
+          @keyframes slowDrift {
+            0% {
+              transform: translateY(0);
+            }
+            100% {
+              transform: translateY(-2px);
+            }
+          }
+
           .animate-slide-in {
-            animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            animation: 
+              slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards,
+              slowDrift 4s ease-in-out infinite alternate;
             will-change: transform, opacity;
             opacity: 0.6;
+          }
+
+          .time-gap {
+            position: relative;
+          }
+
+          .time-gap::before {
+            content: '';
+            position: absolute;
+            left: 24px;
+            top: -12px;
+            bottom: -12px;
+            width: 1px;
+            background: linear-gradient(
+              to bottom,
+              transparent,
+              var(--border) 20%,
+              var(--border) 80%,
+              transparent
+            );
+            opacity: 0.5;
           }
         `}
       </style>
@@ -229,39 +262,59 @@ const Traceboard = ({
       </div>
 
       <ScrollArea ref={scrollAreaRef} className="flex-1 pb-[70px]">
-        <div className="p-4 space-y-3">
-          {traces.map((trace, index) => (
-            <Card 
-              key={trace.id}
-              className="p-3 transition-all hover:translate-y-[-2px] hover:shadow-md animate-slide-in"
-              style={{
-                animationDelay: `${Math.min(index * 60, 400)}ms`
-              }}
-            >
-              <div className="flex items-start gap-2">
-                <div className="bg-muted p-1.5 rounded">
-                  {getToolIcon(trace.type)}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="outline" className="text-xs font-medium">
-                      {trace.type.charAt(0).toUpperCase() + trace.type.slice(1)}
-                      {trace.groupId && (
-                        <span className="ml-1 text-muted-foreground">
-                          #{getShortGroupId(trace.groupId)}
+        <div className="p-4">
+          {traces.map((trace, index) => {
+            // Calculate time gap from previous trace
+            const timeGap = index > 0 
+              ? (trace.numericTimestamp || 0) - (traces[index - 1].numericTimestamp || 0)
+              : 0;
+            
+            // Convert time gap to pixels (e.g., 1 second = 2px, with a min and max)
+            const gapHeight = Math.min(Math.max(timeGap / 1000 * 2, 12), 100);
+
+            return (
+              <div key={trace.id} style={{ marginBottom: index < traces.length - 1 ? gapHeight : 0 }}>
+                <Card 
+                  className="p-3 transition-all hover:translate-y-[-2px] hover:shadow-md animate-slide-in"
+                  style={{
+                    animationDelay: `${Math.min(index * 60, 400)}ms`
+                  }}
+                >
+                  <div className="flex items-start gap-2">
+                    <div className="bg-muted p-1.5 rounded">
+                      {getToolIcon(trace.type)}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline" className="text-xs font-medium">
+                          {trace.type.charAt(0).toUpperCase() + trace.type.slice(1)}
+                          {trace.groupId && (
+                            <span className="ml-1 text-muted-foreground">
+                              #{getShortGroupId(trace.groupId)}
+                            </span>
+                          )}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {trace.timestamp}
                         </span>
-                      )}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {trace.timestamp}
-                    </span>
+                      </div>
+                      <p className="text-sm mt-1">{trace.coordinates}</p>
+                    </div>
                   </div>
-                  <p className="text-sm mt-1">{trace.coordinates}</p>
-                </div>
+                </Card>
+                {index < traces.length - 1 && timeGap > 1000 && (
+                  <div className="time-gap" style={{ height: gapHeight }}>
+                    {timeGap > 5000 && (
+                      <span className="absolute left-8 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                        {Math.round(timeGap / 1000)}s
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
-            </Card>
-          ))}
+            );
+          })}
         </div>
       </ScrollArea>
 
