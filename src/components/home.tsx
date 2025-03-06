@@ -218,18 +218,18 @@ const Home = () => {
   }, [annotations, visualizationCanvas]);
 
   return (
-    <div className="flex h-screen w-screen bg-background overflow-hidden">
-      {/* Toolbox Panel */}
-      <div className="p-4">
-        <ToolboxPanel
-          selectedTool={selectedTool}
-          onToolSelect={handleToolSelect}
-          selectedCount={selectedCount}
-        />
-      </div>
-
-      {/* Main Content Area */}
+    <div className="flex h-screen w-screen overflow-hidden" style={{ background: '#FBFAF8' }}>
+      {/* Main Content Area with Absolute Positioned Toolbox */}
       <div className="flex-1 flex flex-col relative">
+        {/* Toolbox Panel - Absolute Positioned */}
+        <div className="absolute top-4 left-4 z-10">
+          <ToolboxPanel
+            selectedTool={selectedTool}
+            onToolSelect={handleToolSelect}
+            selectedCount={selectedCount}
+          />
+        </div>
+
         <div className="flex-1 overflow-hidden">
           <AnnotationCanvas
             selectedTool={selectedTool}

@@ -154,7 +154,7 @@ const ToolboxPanel = ({
                 {tool.icon}
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="right">
+            <TooltipContent side="right" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 300, letterSpacing: '-0.01em' }}>
               <p>
                 {tool.name.charAt(0).toUpperCase() + tool.name.slice(1)}
                 <span className="ml-2 text-muted-foreground">
@@ -169,7 +169,7 @@ const ToolboxPanel = ({
   };
 
   return (
-    <div className="w-[56px] bg-[#faf9f7] border border-[#b0b0b0] rounded-[12px] flex flex-col items-center py-[22px] px-[14px] gap-[20px]">
+    <div className="w-[56px] bg-[#faf9f7] border border-[#b0b0b0] rounded-[12px] flex flex-col items-center py-[22px] px-[14px] gap-[20px]" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif' }}>
       <TooltipProvider>
         {renderToolSection("implicit")}
         <Divider />

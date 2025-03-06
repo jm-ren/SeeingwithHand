@@ -859,11 +859,12 @@ const AnnotationCanvas = ({
   return (
     <div 
       ref={containerRef} 
-      className="relative w-full h-full bg-background overflow-hidden"
+      className="relative w-full h-full overflow-hidden"
+      style={{ background: '#FBFAF8' }}
     >
       {/* Canvas Controls */}
       <div 
-        className="absolute top-4 right-4 flex gap-2 bg-background/80 p-2 rounded-lg backdrop-blur-sm z-10"
+        className="absolute top-4 right-4 flex gap-2 p-2 rounded-lg z-10"
         style={{
           animation: 'slideDown 0.3s ease-out forwards',
           opacity: 0,

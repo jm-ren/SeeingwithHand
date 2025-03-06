@@ -197,7 +197,12 @@ const Traceboard = ({
   }, []);
 
   return (
-    <div className="w-96 h-full bg-background border-l flex flex-col relative">
+    <div className="h-full border-l flex flex-col relative" style={{ 
+      background: '#FBFAF8',
+      fontFamily: 'Helvetica, Arial, sans-serif',
+      fontWeight: 300,
+      width: 'calc(24rem * 0.92)' // 24rem (w-96) * 0.92 (8% narrower)
+    }}>
       <style>
         {`
           @keyframes fadeIn {
@@ -221,10 +226,13 @@ const Traceboard = ({
           .animate-slide-in {
             opacity: 0;
             animation: 
-              fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards,
+              fadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards,
               continuousDrift 300s linear;
             will-change: transform, opacity;
             transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            letter-spacing: -0.01em;
+            font-weight: 300;
           }
 
           /* Add transition to the trace container */
@@ -280,9 +288,9 @@ const Traceboard = ({
 
       <div className="p-4 border-b flex-shrink-0">
         <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold">Interaction Timeline</h2>
+          <h2 className="text-lg font-semibold" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 500, letterSpacing: '-0.02em' }}>Interaction Timeline</h2>
         </div>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 300, letterSpacing: '0.01em', marginTop: '2px' }}>
           {showCountdown ? (
             <span className="font-medium text-primary">
               Starting in {countdown}...
@@ -319,32 +327,32 @@ const Traceboard = ({
                 }}
               >
                 <Card 
-                  className="p-3 transition-all hover:translate-y-[-2px] hover:shadow-md animate-slide-in"
+                  className="p-4 transition-all hover:translate-y-[-2px] hover:shadow-md animate-slide-in"
                   style={{
                     animationDelay,
                     height: '100%'
                   }}
                 >
-                  <div className="flex items-start gap-2">
+                  <div className="flex items-start gap-2.5">
                     <div className="bg-muted p-1.5 rounded">
                       {getToolIcon(trace.type)}
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <Badge variant="outline" className="text-xs font-medium">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <Badge variant="outline" className="text-xs" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', letterSpacing: '-0.01em', fontWeight: 400 }}>
                           {trace.type.charAt(0).toUpperCase() + trace.type.slice(1)}
                           {trace.groupId && (
-                            <span className="ml-1 text-muted-foreground">
+                            <span className="ml-1 text-muted-foreground" style={{ fontWeight: 300 }}>
                               #{getShortGroupId(trace.groupId)}
                             </span>
                           )}
                         </Badge>
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground flex items-center gap-1" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', letterSpacing: '-0.01em', fontWeight: 300 }}>
                           <Clock className="h-3 w-3" />
                           {trace.timestamp}
                         </span>
                       </div>
-                      <p className="text-sm mt-1">
+                      <p className="text-xs mt-1 text-muted-foreground" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', letterSpacing: '-0.01em', fontWeight: 300 }}>
                         {trace.type === 'freehand' 
                           ? formatFreehandTrace(trace.coordinates)
                           : trace.coordinates}
