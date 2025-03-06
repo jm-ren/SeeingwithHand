@@ -49,7 +49,12 @@ const SessionControls = ({
         fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
       }}
     >
-      <Card className="w-full h-[60px] bg-[#FBFAF8] flex items-center justify-between px-6 fixed bottom-0 left-0 shadow-sm border-0" style={{ borderTop: 'none' }}>
+      <Card className="w-full h-[60px] bg-[#FBFAF8] flex items-center justify-between px-6 fixed bottom-0 left-0 shadow-sm rounded-none border-0" style={{ 
+        borderTop: '1px solid #E5E7EB',
+        borderRight: 'none',
+        borderBottom: 'none',
+        borderLeft: 'none'
+      }}>
         <div className="flex items-center gap-4">
           <TooltipProvider>
             <Tooltip>
@@ -134,7 +139,7 @@ const SessionControls = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 300, letterSpacing: '-0.01em' }}>
+          <span className="text-xs text-muted-foreground" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 330, letterSpacing: '-0.01em' }}>
             {isRecording ? "Recording in progress..." : "Ready to record"}
           </span>
         </div>

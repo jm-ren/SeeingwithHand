@@ -290,7 +290,7 @@ const Traceboard = ({
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-semibold" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 500, letterSpacing: '-0.02em' }}>Interaction Timeline</h2>
         </div>
-        <p className="text-xs text-muted-foreground" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 300, letterSpacing: '0.01em', marginTop: '2px' }}>
+        <p className="text-xs text-muted-foreground" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 330, letterSpacing: '-0.01em', marginTop: '2px' }}>
           {showCountdown ? (
             <span className="font-medium text-primary">
               Starting in {countdown}...
