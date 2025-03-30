@@ -7,37 +7,9 @@ import {
   TooltipTrigger,
 } from "./ui/tooltip";
 import { Undo2 } from "lucide-react";
-import { v4 as uuidv4 } from "uuid";
-
-type Tool =
-  | "point"
-  | "line"
-  | "frame"
-  | "area"
-  | "freehand"
-  | "select"
-  | "group";
-
-interface Point {
-  x: number;
-  y: number;
-}
-
-interface Group {
-  id: string;
-  memberIds: string[];
-  timestamp: number;
-}
-
-interface Annotation {
-  id: string;
-  type: Tool;
-  points: Point[];
-  color: string;
-  timestamp: number;
-  selected?: boolean;
-  groupId?: string;
-}
+import { useAnnotations } from "../context/AnnotationContext";
+import { useSession } from "../context/SessionContext";
+import { Point, Annotation, Tool, Group } from "../types/annotations";
 
 interface AnnotationCanvasProps {
   imageUrl?: string;
@@ -56,14 +28,32 @@ const AnnotationCanvas = ({
   selectedTool = "point",
   onToolChange = () => {},
 }: AnnotationCanvasProps) => {
+  // Use contexts
+  const { 
+    annotations, 
+    setAnnotations, 
+    addAnnotation, 
+    updateAnnotation, 
+    deleteAnnotation,
+    selectAnnotation,
+    deselectAll,
+    groups,
+    createGroup,
+    selectedCount,
+    selectedAnnotations
+  } = useAnnotations();
+  
+  const { isSessionActive, recordInteractionEvent } = useSession();
+  
+  // Local state
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentAnnotation, setCurrentAnnotation] = useState<Point[]>([]);
-  const [annotations, setAnnotations] =
-    useState<Annotation[]>(initialAnnotations);
-  const [groups, setGroups] = useState<Group[]>([]);
+  const [isPolygonMode, setIsPolygonMode] = useState(false);
+  const [isCreatingPolygon, setIsCreatingPolygon] = useState(false);
+  const [tempMousePos, setTempMousePos] = useState<Point | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageDimensions, setImageDimensions] = useState<{
     width: number;
@@ -75,6 +65,8 @@ const AnnotationCanvas = ({
     x: number;
     y: number;
   } | null>(null);
+  const [previousTool, setPreviousTool] = useState<Tool | null>(null);
+  const [isShiftKeyDown, setIsShiftKeyDown] = useState(false);
   
   // Initialize and load image
   useEffect(() => {
@@ -98,6 +90,28 @@ const AnnotationCanvas = ({
       image.onerror = null;
     };
   }, [imageUrl]);
+
+  // Check if current tool uses polygon mode
+  useEffect(() => {
+    const polygonTools = ["frame", "area"];
+    const wasPolygonMode = isPolygonMode;
+    setIsPolygonMode(polygonTools.includes(selectedTool));
+    
+    // If switching away from a polygon tool, clear the current annotation
+    if (!polygonTools.includes(selectedTool) && isCreatingPolygon) {
+      setIsCreatingPolygon(false);
+      setCurrentAnnotation([]);
+      setTempMousePos(null);
+    }
+    
+    // If switching to a polygon tool from a non-polygon tool,
+    // make sure we fully reset any leftover state
+    if (polygonTools.includes(selectedTool) && !wasPolygonMode) {
+      setIsCreatingPolygon(false);
+      setCurrentAnnotation([]);
+      setTempMousePos(null);
+    }
+  }, [selectedTool, isCreatingPolygon, isPolygonMode]);
 
   // Resize canvas to fit container
   const resizeCanvas = useCallback(() => {
@@ -158,6 +172,77 @@ const AnnotationCanvas = ({
     };
   }, [resizeCanvas]);
 
+  // Helper function to check if a point is near another point
+  const isPointNearPoint = (point1: Point, point2: Point, threshold: number = 15): boolean => {
+    const dx = point1.x - point2.x;
+    const dy = point1.y - point2.y;
+    return Math.sqrt(dx * dx + dy * dy) <= threshold;
+  };
+
+  // Helper function to draw a polygon
+  const drawPolygon = (
+    ctx: CanvasRenderingContext2D, 
+    points: Point[], 
+    isFilled: boolean = false, 
+    fillColor: string = "rgba(0, 0, 0, 0.1)",
+    strokeColor: string = "rgba(0, 0, 0, 0.5)",
+    lineWidth: number = 2,
+    isPreviewMode: boolean = false
+  ) => {
+    if (points.length < 1) return;
+    
+    // Always draw all vertices, not just for the current polygon
+    // Draw all polygon points - this ensures they're always visible
+    for (let i = 0; i < points.length; i++) {
+      const isFirstPoint = i === 0;
+      const pointSize = isFirstPoint ? 6 : 4;
+      const pointColor = isFirstPoint ? 'rgba(221, 70, 39, 0.7)' : 'rgba(0, 0, 0, 0.5)';
+      
+      ctx.fillStyle = pointColor;
+      ctx.beginPath();
+      ctx.arc(points[i].x, points[i].y, pointSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Only proceed to drawing lines if we have at least 2 points
+    if (points.length < 2) return;
+    
+    // Draw lines between points - this is the critical part for existing polygons
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    
+    // Draw all connection lines between existing points
+    for (let i = 1; i < points.length; i++) {
+      ctx.lineTo(points[i].x, points[i].y);
+    }
+    
+    // Only add the preview line and closing logic for the current polygon being created
+    if (isPreviewMode && isCreatingPolygon && tempMousePos && points === currentAnnotation) {
+      // Draw from the last point to the current mouse position
+      ctx.lineTo(tempMousePos.x, tempMousePos.y);
+      
+      // Only close the path preview if near the first point
+      if (points.length > 2 && isPointNearPoint(tempMousePos, points[0])) {
+        ctx.closePath();
+      }
+    }
+    // Close the path if we have at least 3 points or we're in fill mode
+    else if (points.length >= 3 || isFilled) {
+      ctx.closePath();
+    }
+    
+    // Fill the polygon if needed
+    if (isFilled) {
+      ctx.fillStyle = fillColor;
+      ctx.fill();
+    }
+    
+    // Stroke the outline
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+  };
+
   const drawAnnotations = useCallback((ctx: CanvasRenderingContext2D) => {
     try {
       // Draw group backgrounds first
@@ -196,13 +281,14 @@ const AnnotationCanvas = ({
         );
       });
 
-      // Draw annotations
+      // Draw all completed annotations first - these should be completely independent
+      // from any polygon currently being created
       annotations.forEach((annotation) => {
-        ctx.beginPath();
-        ctx.strokeStyle = annotation.selected
-          ? "rgba(0, 0, 255, 0.5)"
-          : "rgba(0, 0, 0, 0.5)";
-        ctx.lineWidth = annotation.selected ? 3 : 2;
+        // Determine if this annotation is selected based on selectedAnnotations
+        const isSelected = selectedAnnotations.includes(annotation.id);
+        const strokeColor = isSelected ? "rgba(0, 0, 255, 0.5)" : "rgba(0, 0, 0, 0.5)";
+        const lineWidth = isSelected ? 3 : 2;
+        const fillColor = isSelected ? "rgba(0, 0, 255, 0.1)" : "rgba(0, 0, 0, 0.1)";
 
         switch (annotation.type) {
           case "point":
@@ -228,700 +314,833 @@ const AnnotationCanvas = ({
                 0,
                 Math.PI * 2,
               );
+              ctx.strokeStyle = strokeColor;
+              ctx.lineWidth = lineWidth;
+              ctx.stroke();
             }
             break;
           case "line":
             if (annotation.points[0] && annotation.points[1]) {
+              ctx.beginPath();
               ctx.moveTo(annotation.points[0].x, annotation.points[0].y);
               ctx.lineTo(annotation.points[1].x, annotation.points[1].y);
+              ctx.strokeStyle = strokeColor;
+              ctx.lineWidth = lineWidth;
+              ctx.stroke();
             }
             break;
           case "frame":
-            if (annotation.points[0] && annotation.points[1]) {
+            // Draw as polygon - always draw completed annotation polygons with isPreviewMode=false
+            if (annotation.points.length >= 3) {
+              drawPolygon(ctx, annotation.points, false, fillColor, strokeColor, lineWidth, false);
+            } 
+            // For backward compatibility with old rectangle annotations
+            else if (annotation.points.length === 2) {
+              ctx.beginPath();
               const width = annotation.points[1].x - annotation.points[0].x;
               const height = annotation.points[1].y - annotation.points[0].y;
+              ctx.strokeStyle = strokeColor;
+              ctx.lineWidth = lineWidth;
               ctx.strokeRect(
                 annotation.points[0].x,
                 annotation.points[0].y,
                 width,
-                height,
+                height
               );
             }
             break;
           case "area":
-            if (annotation.points[0] && annotation.points[1]) {
+            // Draw as filled polygon - always draw completed annotation polygons with isPreviewMode=false
+            if (annotation.points.length >= 3) {
+              drawPolygon(ctx, annotation.points, true, fillColor, strokeColor, lineWidth, false);
+            }
+            // For backward compatibility with old rectangle annotations
+            else if (annotation.points.length === 2) {
+              ctx.beginPath();
               const width = annotation.points[1].x - annotation.points[0].x;
               const height = annotation.points[1].y - annotation.points[0].y;
-              ctx.fillStyle = annotation.selected
-                ? "rgba(0, 0, 255, 0.1)"
-                : "rgba(0, 0, 0, 0.1)";
+              ctx.fillStyle = fillColor;
               ctx.fillRect(
                 annotation.points[0].x,
                 annotation.points[0].y,
                 width,
-                height,
+                height
               );
+              ctx.strokeStyle = strokeColor;
+              ctx.lineWidth = lineWidth;
               ctx.strokeRect(
                 annotation.points[0].x,
                 annotation.points[0].y,
                 width,
-                height,
+                height
               );
             }
             break;
           case "freehand":
             if (annotation.points.length > 0) {
+              ctx.beginPath();
               ctx.moveTo(annotation.points[0].x, annotation.points[0].y);
               annotation.points.forEach((point) => {
                 ctx.lineTo(point.x, point.y);
               });
+              ctx.strokeStyle = strokeColor;
+              ctx.lineWidth = lineWidth;
+              ctx.stroke();
             }
             break;
         }
-        ctx.stroke();
       });
 
-      // Draw current annotation
+      // Draw current annotation - this needs to be drawn last to appear on top
       if (currentAnnotation.length > 0) {
-        ctx.beginPath();
-        ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
-        ctx.lineWidth = 2;
-
         switch (selectedTool) {
           case "point":
-            ctx.arc(
-              currentAnnotation[0].x,
-              currentAnnotation[0].y,
-              5,
-              0,
-              Math.PI * 2,
-            );
+            if (currentAnnotation[0]) {
+              ctx.beginPath();
+              ctx.arc(
+                currentAnnotation[0].x,
+                currentAnnotation[0].y,
+                5,
+                0,
+                Math.PI * 2
+              );
+              ctx.strokeStyle = "rgba(221, 70, 39, 0.5)";
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            }
             break;
           case "line":
-            ctx.moveTo(currentAnnotation[0].x, currentAnnotation[0].y);
-            if (currentAnnotation[1]) {
+            if (currentAnnotation[0] && tempMousePos && isDrawing) {
+              ctx.beginPath();
+              ctx.moveTo(currentAnnotation[0].x, currentAnnotation[0].y);
+              ctx.lineTo(tempMousePos.x, tempMousePos.y);
+              ctx.strokeStyle = "rgba(221, 70, 39, 0.5)";
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            } else if (currentAnnotation[0] && currentAnnotation[1]) {
+              ctx.beginPath();
+              ctx.moveTo(currentAnnotation[0].x, currentAnnotation[0].y);
               ctx.lineTo(currentAnnotation[1].x, currentAnnotation[1].y);
+              ctx.strokeStyle = "rgba(221, 70, 39, 0.5)";
+              ctx.lineWidth = 2;
+              ctx.stroke();
             }
             break;
           case "frame":
-          case "area":
-            if (currentAnnotation[1]) {
+            // Draw as polygon in creation mode - Use isPreviewMode=true for the current polygon being created
+            if (isCreatingPolygon) {
+              // Make sure to fully emphasize the current polygon
+              drawPolygon(
+                ctx, 
+                currentAnnotation, 
+                false, 
+                "rgba(0, 0, 0, 0.1)", 
+                "rgba(221, 70, 39, 0.5)", 
+                2,
+                true
+              );
+              
+              // Draw close indicator when near the starting point
+              if (currentAnnotation.length > 2 && tempMousePos && 
+                  isPointNearPoint(tempMousePos, currentAnnotation[0])) {
+                ctx.beginPath();
+                ctx.arc(currentAnnotation[0].x, currentAnnotation[0].y, 10, 0, Math.PI * 2);
+                ctx.strokeStyle = "rgba(0, 255, 0, 0.8)";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+              }
+            } 
+            // For rectangle mode (backward compatibility)
+            else if (currentAnnotation[0] && currentAnnotation[1]) {
               const width = currentAnnotation[1].x - currentAnnotation[0].x;
               const height = currentAnnotation[1].y - currentAnnotation[0].y;
-              if (selectedTool === "area") {
-                ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
-                ctx.fillRect(
-                  currentAnnotation[0].x,
-                  currentAnnotation[0].y,
-                  width,
-                  height,
-                );
-              }
+              ctx.strokeStyle = "rgba(221, 70, 39, 0.5)";
+              ctx.lineWidth = 2;
               ctx.strokeRect(
                 currentAnnotation[0].x,
                 currentAnnotation[0].y,
                 width,
-                height,
+                height
+              );
+            }
+            break;
+          case "area":
+            // Draw as filled polygon in creation mode - Use isPreviewMode=true for the current polygon being created
+            if (isCreatingPolygon) {
+              // Make sure to fully emphasize the current polygon
+              drawPolygon(
+                ctx, 
+                currentAnnotation, 
+                true, 
+                "rgba(221, 70, 39, 0.1)", 
+                "rgba(221, 70, 39, 0.5)", 
+                2,
+                true
+              );
+              
+              // Draw close indicator when near the starting point
+              if (currentAnnotation.length > 2 && tempMousePos && 
+                  isPointNearPoint(tempMousePos, currentAnnotation[0])) {
+                ctx.beginPath();
+                ctx.arc(currentAnnotation[0].x, currentAnnotation[0].y, 10, 0, Math.PI * 2);
+                ctx.strokeStyle = "rgba(0, 255, 0, 0.8)";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+              }
+            } 
+            // For rectangle mode (backward compatibility)
+            else if (currentAnnotation[0] && currentAnnotation[1]) {
+              const width = currentAnnotation[1].x - currentAnnotation[0].x;
+              const height = currentAnnotation[1].y - currentAnnotation[0].y;
+              ctx.fillStyle = "rgba(221, 70, 39, 0.1)";
+              ctx.fillRect(
+                currentAnnotation[0].x,
+                currentAnnotation[0].y,
+                width,
+                height
+              );
+              ctx.strokeStyle = "rgba(221, 70, 39, 0.5)";
+              ctx.lineWidth = 2;
+              ctx.strokeRect(
+                currentAnnotation[0].x,
+                currentAnnotation[0].y,
+                width,
+                height
               );
             }
             break;
           case "freehand":
-            ctx.moveTo(currentAnnotation[0].x, currentAnnotation[0].y);
-            currentAnnotation.forEach((point) => {
-              ctx.lineTo(point.x, point.y);
-            });
+            if (currentAnnotation.length > 0) {
+              ctx.beginPath();
+              ctx.moveTo(currentAnnotation[0].x, currentAnnotation[0].y);
+              currentAnnotation.forEach((point) => {
+                ctx.lineTo(point.x, point.y);
+              });
+              ctx.strokeStyle = "rgba(221, 70, 39, 0.5)";
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            }
             break;
         }
-        ctx.stroke();
       }
     } catch (error) {
-      console.error("Error in drawAnnotations:", error);
+      console.error("Error drawing annotations:", error);
     }
-  }, [annotations, currentAnnotation, groups, selectedTool]);
+  }, [annotations, currentAnnotation, groups, selectedTool, isCreatingPolygon, tempMousePos, isDrawing, selectedAnnotations]);
 
-  // Function to draw the entire canvas
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
-    const image = imageRef.current;
-
-    if (!canvas || !image || !imageDimensions) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    try {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      if (imageScaling) {
-        // Draw the image with proper scaling and centering
-        ctx.drawImage(
-          image, 
-          imageScaling.x, 
-          imageScaling.y, 
-          imageScaling.width, 
-          imageScaling.height
-        );
-      } else {
-        // Fallback to filling the canvas if scaling not yet calculated
-        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-      }
-      
-      // Draw all annotations
-      drawAnnotations(ctx);
-    } catch (error) {
-      console.error("Error drawing canvas:", error);
-    }
-  }, [imageScaling, imageDimensions, drawAnnotations]);
-
-  // Redraw canvas when dependencies change
-  useEffect(() => {
-    if (imageLoaded && imageDimensions) {
-      drawCanvas();
-    }
-  }, [drawCanvas, imageLoaded, imageDimensions]);
-
-  const handleGroupCreation = useCallback(() => {
-    const selectedAnnotations = annotations.filter((a) => a.selected);
-    if (selectedAnnotations.length < 2) return;
-
-    const groupId = `group-${Date.now()}`;
-    const newGroup: Group = {
-      id: groupId,
-      memberIds: selectedAnnotations.map((a) => a.id),
-      timestamp: Date.now(),
-    };
-
-    setGroups((prev) => [...prev, newGroup]);
-    setAnnotations((prev) =>
-      prev.map((a) => ({
-        ...a,
-        groupId: a.selected ? groupId : a.groupId,
-      })),
+    const ctx = canvas?.getContext("2d");
+    
+    if (!canvas || !ctx || !imageRef.current || !imageScaling) return;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw image
+    ctx.drawImage(
+      imageRef.current,
+      imageScaling.x,
+      imageScaling.y,
+      imageScaling.width,
+      imageScaling.height,
     );
+    
+    // Draw annotations
+    drawAnnotations(ctx);
+  }, [drawAnnotations, imageScaling]);
+
+  // Update canvas when annotations change
+  useEffect(() => {
+    drawCanvas();
+    
+    // Notify parent component of changes
+    onAnnotationChange(annotations);
+    onSelectionChange(selectedCount);
+  }, [annotations, drawCanvas, onAnnotationChange, onSelectionChange, selectedCount, tempMousePos]);
+
+  // Sync selectedAnnotations with annotation objects
+  useEffect(() => {
+    console.log("Selected annotations changed:", selectedAnnotations);
+    // This effect triggers re-render when selections change
+    drawCanvas();
+  }, [selectedAnnotations, drawCanvas]);
+
+  // Debugging output for selection state
+  useEffect(() => {
+    console.log("Current selection state:", {
+      selectedAnnotations,
+      selectedCount,
+      annotations: annotations.map(a => ({id: a.id, selected: selectedAnnotations.includes(a.id)}))
+    });
+  }, [selectedAnnotations, selectedCount, annotations]);
+
+  // Handle group creation
+  const handleCreateGroup = useCallback(() => {
+    console.log("Creating group with selectedAnnotations:", selectedAnnotations);
+    
+    // Use the selectedAnnotations array directly - this is crucial!
+    const selectedAnnotationIds = selectedAnnotations;
+    
+    if (selectedAnnotationIds.length >= 2) {
+      console.log("Creating group with IDs:", selectedAnnotationIds);
+      createGroup(selectedAnnotationIds);
+      
+      // Record interaction event only if session is active
+      if (isSessionActive) {
+        recordInteractionEvent('group_create', {
+          data: {
+            groupSize: selectedAnnotationIds.length,
+            annotationIds: selectedAnnotationIds
+          }
+        });
+      }
+    } else {
+      console.log("Not enough selections to create a group");
+    }
+  }, [selectedAnnotations, createGroup, recordInteractionEvent, isSessionActive]);
+
+  // Find annotation at a specific point
+  const findAnnotationAtPoint = useCallback((point: Point): Annotation | null => {
+    // Search in reverse order (top to bottom in z-index)
+    for (let i = annotations.length - 1; i >= 0; i--) {
+      const annotation = annotations[i];
+      
+      switch (annotation.type) {
+        case "point":
+          if (
+            annotation.points[0] &&
+            Math.hypot(
+              annotation.points[0].x - point.x,
+              annotation.points[0].y - point.y,
+            ) <= 15
+          ) {
+            return annotation;
+          }
+          break;
+        case "line":
+          if (
+            annotation.points[0] &&
+            annotation.points[1] &&
+            isPointNearLine(
+              point,
+              annotation.points[0],
+              annotation.points[1],
+              10,
+            )
+          ) {
+            return annotation;
+          }
+          break;
+        case "frame":
+        case "area":
+          // For polygon shapes (3+ points)
+          if (annotation.points.length >= 3) {
+            if (isPointInPolygon(point, annotation.points, 5)) {
+              return annotation;
+            }
+          }
+          // For legacy rectangle shapes (2 points)
+          else if (
+            annotation.points[0] &&
+            annotation.points[1] &&
+            isPointInRect(point, annotation.points[0], annotation.points[1], 5)
+          ) {
+            return annotation;
+          }
+          break;
+        case "freehand":
+          if (isPointNearPolyline(point, annotation.points, 10)) {
+            return annotation;
+          }
+          break;
+      }
+    }
+    
+    return null;
   }, [annotations]);
 
-  // Update annotations when initialAnnotations changes
+  // Update keydown event listeners for shift+select and shift+space behavior
   useEffect(() => {
-    setAnnotations(initialAnnotations);
-  }, [initialAnnotations]);
-
-  const getCanvasPoint = (e: React.MouseEvent): Point => {
-    const canvas = canvasRef.current;
-    if (!canvas || !imageDimensions) return { x: 0, y: 0 };
-    
-    const rect = canvas.getBoundingClientRect();
-    
-    // Calculate relative position within canvas
-    const canvasX = e.clientX - rect.left;
-    const canvasY = e.clientY - rect.top;
-    
-    // Convert to canvas coordinate system
-    // No need to adjust for scale or position since we removed those
-    return {
-      x: canvasX,
-      y: canvasY
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cancel polygon creation with Escape key
+      if (e.key === 'Escape' && isCreatingPolygon) {
+        setIsCreatingPolygon(false);
+        setCurrentAnnotation([]);
+        setTempMousePos(null);
+      }
+      
+      // Shift key handling - TEMPORARILY SWITCH TO SELECT TOOL
+      if (e.key === 'Shift' && !isShiftKeyDown) {
+        // Store the current tool before switching to select
+        if (selectedTool !== 'select') {
+          setPreviousTool(selectedTool);
+          // Temporarily switch to select tool
+          onToolChange('select');
+        }
+        setIsShiftKeyDown(true);
+        console.log("Shift pressed - switching to select tool, previous tool:", selectedTool);
+      }
+      
+      // Space key handling - GROUP SELECTED OBJECTS WHILE SHIFT IS HELD
+      if (e.key === ' ' && isShiftKeyDown && selectedCount >= 2) {
+        handleCreateGroup();
+        console.log("Shift+Space pressed - grouping objects");
+        e.preventDefault(); // Prevent scrolling from spacebar
+      }
     };
-  };
+    
+    const handleKeyUp = (e: KeyboardEvent) => {
+      // When shift key is released, switch back to the previous tool
+      if (e.key === 'Shift') {
+        if (previousTool) {
+          // Switch back to previous tool
+          onToolChange(previousTool);
+          console.log("Shift released - switching back to:", previousTool);
+          setPreviousTool(null);
+          
+          // Clear all selections when shift is released
+          deselectAll();
+          console.log("Shift released - clearing all selections");
+        }
+        setIsShiftKeyDown(false);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isCreatingPolygon, handleCreateGroup, selectedCount, isShiftKeyDown, selectedTool, previousTool, onToolChange, deselectAll]);
 
-  // Add subtle animation to newly created annotations
-  useEffect(() => {
-    if (annotations.length === 0) return;
+  // Handle mouse events - make selection use multi-select when shift is held
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!imageScaling) return;
     
     const canvas = canvasRef.current;
     if (!canvas) return;
     
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
     
-    // Get the last added annotation
-    const lastAnnotation = annotations[annotations.length - 1];
+    // Check if we're in the image bounds
+    if (
+      x < imageScaling.x ||
+      y < imageScaling.y ||
+      x > imageScaling.x + imageScaling.width ||
+      y > imageScaling.y + imageScaling.height
+    ) {
+      return;
+    }
     
-    // Skip if this is just initialization
-    if (annotations.length === initialAnnotations.length) return;
+    const currentPoint = { x, y };
     
-    // Add a subtle animation effect for new annotations
-    let opacity = 0;
-    let fadeIn = true;
-    
-    const animate = () => {
-      if (!canvas || !ctx) return;
+    // Handle select tool behavior - either from actual select tool or shift key
+    if (selectedTool === "select") {
+      console.log("Select tool active, shift key:", isShiftKeyDown);
+      const clickedAnnotation = findAnnotationAtPoint(currentPoint);
       
-      // Draw everything
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      // Draw image
-      if (imageRef.current) {
-        try {
-          ctx.drawImage(
-            imageRef.current,
-            0,
-            0,
-            canvas.width,
-            canvas.height
-          );
-        } catch (error) {
-          console.error("Error drawing image:", error);
-        }
-      }
-      
-      // Draw all annotations except the last one
-      const tempAnnotations = [...annotations.slice(0, -1)];
-      drawAnnotationsWithoutLast(ctx, tempAnnotations);
-      
-      // Draw the last annotation with animation
-      if (lastAnnotation) {
-        ctx.save();
-        ctx.globalAlpha = fadeIn ? opacity : 1;
-        drawSingleAnnotation(ctx, lastAnnotation);
-        ctx.restore();
-      }
-      
-      // Update animation
-      if (fadeIn) {
-        opacity += 0.1;
-        if (opacity >= 1) {
-          opacity = 1;
-          fadeIn = false;
-          drawAnnotations(ctx);
-          return;
-        }
-        requestAnimationFrame(animate);
-      }
-    };
-    
-    // Start animation
-    requestAnimationFrame(animate);
-    
-  }, [annotations.length]);
-  
-  // Helper function to draw all annotations except the last one
-  const drawAnnotationsWithoutLast = useCallback(
-    (ctx: CanvasRenderingContext2D, annotations: Annotation[]) => {
-      // Draw group backgrounds first
-      groups.forEach((group) => {
-        const groupAnnotations = annotations.filter(
-          (a) => a.groupId === group.id,
-        );
-        if (groupAnnotations.length === 0) return;
+      if (clickedAnnotation) {
+        // Always use multi-select when shift key is down
+        console.log("Selecting annotation:", clickedAnnotation.id, "With multi-select:", isShiftKeyDown);
+        selectAnnotation(clickedAnnotation.id, isShiftKeyDown);
         
-        // Calculate and draw group bounds
-        let minX = Infinity,
-          minY = Infinity,
-          maxX = -Infinity,
-          maxY = -Infinity;
-        groupAnnotations.forEach((annotation) => {
-          annotation.points.forEach((point) => {
-            minX = Math.min(minX, point.x);
-            minY = Math.min(minY, point.y);
-            maxX = Math.max(maxX, point.x);
-            maxY = Math.max(maxY, point.y);
+        // Record interaction event only if session is active
+        if (isSessionActive) {
+          recordInteractionEvent('annotation_select', {
+            relatedAnnotationId: clickedAnnotation.id,
+            position: currentPoint
           });
-        });
-
-        // Draw group background with padding
-        ctx.fillStyle = "rgba(200, 200, 255, 0.2)";
-        ctx.fillRect(minX - 10, minY - 10, maxX - minX + 20, maxY - minY + 20);
-
-        // Draw group border
-        ctx.strokeStyle = "rgba(100, 100, 255, 0.5)";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(
-          minX - 10,
-          minY - 10,
-          maxX - minX + 20,
-          maxY - minY + 20,
-        );
-      });
+        }
+      } else if (!isShiftKeyDown) {
+        // Only deselect all if shift is not pressed
+        console.log("Deselecting all (shift not pressed)");
+        deselectAll();
+      }
+    } else if (selectedTool === "group") {
+      console.log("Group tool used");
+      if (selectedCount >= 2) {
+        handleCreateGroup();
+      }
+      // Switch back to select tool after grouping
+      onToolChange("select");
+    } else if (isPolygonMode) {
+      // Handle polygon creation modes for frame and area tools
       
-      // Draw all annotations
-      annotations.forEach((annotation) => {
-        drawSingleAnnotation(ctx, annotation);
-      });
-    },
-    [groups]
-  );
-  
-  // Helper function to draw a single annotation
-  const drawSingleAnnotation = useCallback(
-    (ctx: CanvasRenderingContext2D, annotation: Annotation) => {
-      ctx.strokeStyle = annotation.selected
-        ? "#FFC107" // Highlight color for selected items
-        : annotation.color;
-      ctx.lineWidth = 2;
-      ctx.fillStyle = annotation.color;
-      
-      // Draw based on type
-      switch (annotation.type) {
-        case "point":
-          if (annotation.points[0]) {
-            // Draw invisible larger hit area
-            ctx.beginPath();
-            ctx.arc(
-              annotation.points[0].x,
-              annotation.points[0].y,
-              15,
-              0,
-              Math.PI * 2,
-            );
-            ctx.fillStyle = "rgba(0, 0, 0, 0)";
-            ctx.fill();
-
-            // Draw visible dot
-            ctx.beginPath();
-            ctx.arc(
-              annotation.points[0].x,
-              annotation.points[0].y,
-              5,
-              0,
-              Math.PI * 2,
-            );
-          }
-          break;
-        case "line":
-          if (annotation.points[0] && annotation.points[1]) {
-            ctx.moveTo(annotation.points[0].x, annotation.points[0].y);
-            ctx.lineTo(annotation.points[1].x, annotation.points[1].y);
-          }
-          break;
-        case "frame":
-          if (annotation.points[0] && annotation.points[1]) {
-            const width = annotation.points[1].x - annotation.points[0].x;
-            const height = annotation.points[1].y - annotation.points[0].y;
-            ctx.strokeRect(
-              annotation.points[0].x,
-              annotation.points[0].y,
-              width,
-              height,
-            );
-          }
-          break;
-        case "area":
-          if (annotation.points[0] && annotation.points[1]) {
-            const width = annotation.points[1].x - annotation.points[0].x;
-            const height = annotation.points[1].y - annotation.points[0].y;
-            ctx.fillStyle = annotation.selected
-              ? "rgba(0, 0, 255, 0.1)"
-              : "rgba(0, 0, 0, 0.1)";
-            ctx.fillRect(
-              annotation.points[0].x,
-              annotation.points[0].y,
-              width,
-              height,
-            );
-            ctx.strokeRect(
-              annotation.points[0].x,
-              annotation.points[0].y,
-              width,
-              height,
-            );
-          }
-          break;
-        case "freehand":
-          if (annotation.points.length > 0) {
-            ctx.moveTo(annotation.points[0].x, annotation.points[0].y);
-            annotation.points.forEach((point) => {
-              ctx.lineTo(point.x, point.y);
+      // If already creating a polygon, check if clicking near the starting point
+      if (isCreatingPolygon && currentAnnotation.length > 2) {
+        if (isPointNearPoint(currentPoint, currentAnnotation[0])) {
+          // Close the polygon and add it to annotations
+          const newAnnotation: Omit<Annotation, 'id' | 'timestamp'> = {
+            type: selectedTool,
+            points: [...currentAnnotation], // Close the polygon
+            color: "black",
+            selected: false
+          };
+          
+          // Add the annotation
+          addAnnotation(newAnnotation);
+          
+          // Record interaction event only if session is active
+          if (isSessionActive) {
+            recordInteractionEvent('annotation_create', {
+              position: currentAnnotation[0],
+              toolType: selectedTool
             });
           }
-          break;
-      }
-    },
-    []
-  );
-
-  const isPointInPath = (point: Point, annotation: Annotation): boolean => {
-    const tolerance = 15;
-    switch (annotation.type) {
-      case "point":
-        if (annotation.points[0]) {
-          const dx = point.x - annotation.points[0].x;
-          const dy = point.y - annotation.points[0].y;
-          return Math.sqrt(dx * dx + dy * dy) <= tolerance;
+          
+          // Reset polygon creation state completely
+          setIsCreatingPolygon(false);
+          setCurrentAnnotation([]);
+          setTempMousePos(null);
+          return; // Important to return here to prevent adding another point
+        } else {
+          // Add the point to the current polygon
+          setCurrentAnnotation(prev => [...prev, currentPoint]);
         }
+      } 
+      // If polygon tool is active but we're not creating a polygon, 
+      // this means either we're starting for the first time or 
+      // we finished a previous polygon and need to start a new one
+      else if (!isCreatingPolygon) {
+        // Make sure all previous polygon state is completely reset
+        setIsCreatingPolygon(true);
+        setCurrentAnnotation([currentPoint]);
+        // Reset any temporary states that might be left over
+        setTempMousePos(null);
+      } 
+      // Add point to existing polygon
+      else {
+        setCurrentAnnotation(prev => [...prev, currentPoint]);
+      }
+    } else {
+      // Handle other tools (point, line, freehand)
+      
+      // Clear any previous state completely to prevent unwanted connections
+      setTempMousePos(null);
+      setCurrentAnnotation([]);
+      
+      // Now start the new drawing action
+      setIsDrawing(true);
+      setCurrentAnnotation([currentPoint]);
+    }
+  }, [imageScaling, selectedTool, isCreatingPolygon, currentAnnotation, addAnnotation, recordInteractionEvent, selectAnnotation, deselectAll, isPolygonMode, isSessionActive, findAnnotationAtPoint]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!imageScaling) return;
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Only update temp mouse position if actively drawing or creating a polygon
+    // This prevents "ghost lines" from appearing when not actively creating an annotation
+    if (isDrawing || isCreatingPolygon) {
+      setTempMousePos({ x, y });
+    } else if (isPolygonMode) {
+      // For polygon tools, we only need the temp mouse position when hovering near the first point
+      // to show the close indicator or when actively adding points
+      if (currentAnnotation.length > 0) {
+        setTempMousePos({ x, y });
+      }
+    } else {
+      // For other tools, update temp mouse pos only when drawing something
+      if (isDrawing) {
+        setTempMousePos({ x, y });
+      } else {
+        // Explicitly set to null when not drawing to prevent connections
+        setTempMousePos(null);
+      }
+    }
+    
+    // If not in drawing mode or creating a polygon, just return
+    if (!isDrawing && !isCreatingPolygon) return;
+    
+    // Update current annotation based on tool
+    switch (selectedTool) {
+      case "point":
+        setCurrentAnnotation([{ x, y }]);
         break;
       case "line":
-        if (annotation.points[0] && annotation.points[1]) {
-          const x1 = annotation.points[0].x;
-          const y1 = annotation.points[0].y;
-          const x2 = annotation.points[1].x;
-          const y2 = annotation.points[1].y;
-          const dx = x2 - x1;
-          const dy = y2 - y1;
-          const length = Math.sqrt(dx * dx + dy * dy);
-          if (length === 0) return false;
-          const dot =
-            ((point.x - x1) * dx + (point.y - y1) * dy) / (length * length);
-          const closestX = x1 + dot * dx;
-          const closestY = y1 + dot * dy;
-          const distance = Math.sqrt(
-            Math.pow(point.x - closestX, 2) + Math.pow(point.y - closestY, 2),
-          );
-          return distance <= tolerance && dot >= 0 && dot <= 1;
+        if (currentAnnotation.length > 0) {
+          setCurrentAnnotation([currentAnnotation[0], { x, y }]);
         }
         break;
       case "frame":
       case "area":
-        if (annotation.points[0] && annotation.points[1]) {
-          const x = Math.min(annotation.points[0].x, annotation.points[1].x);
-          const y = Math.min(annotation.points[0].y, annotation.points[1].y);
-          const width = Math.abs(
-            annotation.points[1].x - annotation.points[0].x,
-          );
-          const height = Math.abs(
-            annotation.points[1].y - annotation.points[0].y,
-          );
-          return (
-            point.x >= x - tolerance &&
-            point.x <= x + width + tolerance &&
-            point.y >= y - tolerance &&
-            point.y <= y + height + tolerance
-          );
+        if (!isCreatingPolygon && currentAnnotation.length > 0) {
+          // For backward compatibility with rectangle mode
+          setCurrentAnnotation([currentAnnotation[0], { x, y }]);
         }
+        // In polygon mode, tempMousePos is used for preview, but we don't update currentAnnotation
         break;
       case "freehand":
-        return annotation.points.some((pathPoint, i) => {
-          if (i === 0) return false;
-          const prevPoint = annotation.points[i - 1];
-          const dx = pathPoint.x - prevPoint.x;
-          const dy = pathPoint.y - prevPoint.y;
-          const length = Math.sqrt(dx * dx + dy * dy);
-          if (length === 0) return false;
-          const dot =
-            ((point.x - prevPoint.x) * dx + (point.y - prevPoint.y) * dy) /
-            (length * length);
-          const closestX = prevPoint.x + dot * dx;
-          const closestY = prevPoint.y + dot * dy;
-          const distance = Math.sqrt(
-            Math.pow(point.x - closestX, 2) + Math.pow(point.y - closestY, 2),
-          );
-          return distance <= tolerance && dot >= 0 && dot <= 1;
-        });
-    }
-    return false;
-  };
-
-  useEffect(() => {
-    const selectedCount = annotations.filter((a) => a.selected).length;
-    onSelectionChange(selectedCount);
-    onAnnotationChange(annotations);
-  }, [annotations, onSelectionChange, onAnnotationChange]);
-
-  // Add keyup listener to clear selections when Shift is released
-  useEffect(() => {
-    const handleKeyUp = (e: KeyboardEvent) => {
-      // Check if the released key was Shift
-      if (e.key === 'Shift') {
-        // Clear all selections when Shift key is released
-        const hasSelectedAnnotations = annotations.some(a => a.selected);
-        if (hasSelectedAnnotations) {
-          setAnnotations(annotations.map(a => ({ ...a, selected: false })));
-        }
-      }
-    };
-
-    window.addEventListener("keyup", handleKeyUp);
-    return () => window.removeEventListener("keyup", handleKeyUp);
-  }, [annotations]);
-
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      // Prevent triggering shortcuts when typing in input fields
-      if (e.target instanceof HTMLInputElement || 
-          e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
-      
-      // Add tool selection keyboard shortcuts
-      if (!e.ctrlKey && !e.altKey && !e.metaKey) {
-        switch (e.key.toLowerCase()) {
-          case 'v':
-            onToolChange("select");
-            break;
-          case '`':
-            onToolChange("freehand");
-            break;
-          case ' ': // Space key
-            e.preventDefault(); // Prevent page scrolling
-            handleGroupCreation();
-            break;
-          case "p":
-            onToolChange("point");
-            break;
-          case "l":
-            onToolChange("line");
-            break;
-          case "r":
-            onToolChange("frame");
-            break;
-          case "a":
-            onToolChange("area");
-            break;
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyPress); // Changed from keypress to keydown to capture space key
-    return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [handleGroupCreation, onToolChange]);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    const point = getCanvasPoint(e);
-    
-    // Only enable selection when the Shift key is pressed or select tool is active
-    if (e.shiftKey || selectedTool === "select") {
-      // Check if the user clicked on an annotation
-      let clickedAnnotation = false;
-      const updatedAnnotations = annotations.map((annotation) => {
-        // Check if this annotation was clicked
-        if (!clickedAnnotation && isPointInPath(point, annotation)) {
-          clickedAnnotation = true;
-          // Toggle selection state
-          return { ...annotation, selected: !annotation.selected };
-        }
-        
-        // When using Shift, keep existing selections, otherwise clear them
-        return {
-          ...annotation,
-          selected: e.shiftKey ? annotation.selected : false
-        };
-      });
-      
-      // If an annotation was clicked, update annotations and exit
-      if (clickedAnnotation) {
-        setAnnotations(updatedAnnotations);
-        return;
-      }
+        setCurrentAnnotation([...currentAnnotation, { x, y }]);
+        break;
     }
     
-    // Clear all selections when clicking on empty space without Shift key
-    const hasSelectedAnnotations = annotations.some(a => a.selected);
-    if (!e.shiftKey && hasSelectedAnnotations) {
-      setAnnotations(annotations.map(a => ({ ...a, selected: false })));
-    }
-    
-    // Handle group creation
-    if (selectedTool === "group") {
-      handleGroupCreation();
+    drawCanvas();
+  }, [isDrawing, isCreatingPolygon, imageScaling, selectedTool, currentAnnotation, drawCanvas, isPolygonMode]);
+
+  const handleMouseUp = useCallback(() => {
+    if (!isDrawing || !imageScaling || currentAnnotation.length === 0 || isCreatingPolygon) {
+      setIsDrawing(false);
       return;
     }
     
-    // If no selection was made (or shift wasn't pressed), proceed with drawing
-    if (e.button === 0 && selectedTool !== "select") {
-      setIsDrawing(true);
-      setCurrentAnnotation([point]);
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDrawing) {
-      const point = getCanvasPoint(e);
-      if (selectedTool === "freehand") {
-        setCurrentAnnotation((prev) => [...prev, point]);
-      } else if (["line", "frame", "area"].includes(selectedTool)) {
-        setCurrentAnnotation([currentAnnotation[0], point]);
+    // Finalize the annotation for non-polygon tools
+    if (!isPolygonMode) {
+      const newAnnotation: Omit<Annotation, 'id' | 'timestamp'> = {
+        type: selectedTool,
+        points: [...currentAnnotation],
+        color: "black",
+        selected: false
+      };
+      
+      // Add the annotation
+      addAnnotation(newAnnotation);
+      
+      // Record interaction event only if session is active
+      if (isSessionActive) {
+        recordInteractionEvent('annotation_create', {
+          position: currentAnnotation[0],
+          toolType: selectedTool
+        });
       }
     }
+    
+    // Reset drawing state for non-polygon tools
+    setIsDrawing(false);
+    setCurrentAnnotation([]);
+    setTempMousePos(null); // Important to clear this to prevent unwanted connections
+  }, [isDrawing, imageScaling, currentAnnotation, isCreatingPolygon, isPolygonMode, selectedTool, addAnnotation, recordInteractionEvent, isSessionActive]);
+
+  const handleMouseLeave = useCallback(() => {
+    // Only keep temp mouse position if actively drawing a polygon
+    if (!isCreatingPolygon) {
+      setTempMousePos(null);
+    }
+    
+    if (isDrawing && !isCreatingPolygon) {
+      handleMouseUp();
+    }
+  }, [isDrawing, isCreatingPolygon, handleMouseUp]);
+  
+  const handleDoubleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    // We're removing the polygon closing functionality from double-click
+    // Double-click now has no specific behavior for polygons
+  }, []);
+
+  // Helper function to check if a point is near a line
+  const isPointNearLine = (
+    point: Point,
+    lineStart: Point,
+    lineEnd: Point,
+    threshold: number,
+  ): boolean => {
+    const lineLength = Math.hypot(
+      lineEnd.x - lineStart.x,
+      lineEnd.y - lineStart.y,
+    );
+    
+    if (lineLength === 0) return false;
+    
+    const distance =
+      Math.abs(
+        (lineEnd.y - lineStart.y) * point.x -
+          (lineEnd.x - lineStart.x) * point.y +
+          lineEnd.x * lineStart.y -
+          lineEnd.y * lineStart.x,
+      ) / lineLength;
+    
+    // Check if point is within the bounding box of the line
+    const dotProduct =
+      ((point.x - lineStart.x) * (lineEnd.x - lineStart.x) +
+        (point.y - lineStart.y) * (lineEnd.y - lineStart.y)) /
+      (lineLength * lineLength);
+    
+    return distance <= threshold && dotProduct >= 0 && dotProduct <= 1;
   };
 
-  const handleMouseUp = () => {
-    if (isDrawing) {
-      setIsDrawing(false);
-      if (currentAnnotation.length > 0) {
-        if (["line", "frame", "area"].includes(selectedTool)) {
-          if (currentAnnotation.length < 2) {
-            setCurrentAnnotation([]);
-            return;
-          }
-          const dx = currentAnnotation[1].x - currentAnnotation[0].x;
-          const dy = currentAnnotation[1].y - currentAnnotation[0].y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          if (distance < 5) {
-            setCurrentAnnotation([]);
-            return;
-          }
+  // Helper function to check if a point is in a rectangle
+  const isPointInRect = (
+    point: Point,
+    rectStart: Point,
+    rectEnd: Point,
+    padding: number = 0,
+  ): boolean => {
+    const minX = Math.min(rectStart.x, rectEnd.x) - padding;
+    const maxX = Math.max(rectStart.x, rectEnd.x) + padding;
+    const minY = Math.min(rectStart.y, rectEnd.y) - padding;
+    const maxY = Math.max(rectStart.y, rectEnd.y) + padding;
+    
+    return (
+      point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY
+    );
+  };
+
+  // Helper function to check if a point is near a polyline
+  const isPointNearPolyline = (
+    point: Point,
+    polyline: Point[],
+    threshold: number,
+  ): boolean => {
+    if (polyline.length < 2) return false;
+    
+    for (let i = 0; i < polyline.length - 1; i++) {
+      if (isPointNearLine(point, polyline[i], polyline[i + 1], threshold)) {
+        return true;
+      }
+    }
+    
+    return false;
+  };
+  
+  // Helper function to check if a point is inside a polygon
+  const isPointInPolygon = (
+    point: Point,
+    polygon: Point[],
+    padding: number = 0
+  ): boolean => {
+    // First check if the point is near any edge of the polygon
+    if (padding > 0) {
+      // Check perimeter
+      for (let i = 0; i < polygon.length; i++) {
+        const j = (i + 1) % polygon.length;
+        if (isPointNearLine(point, polygon[i], polygon[j], padding)) {
+          return true;
         }
-
-        const newAnnotation: Annotation = {
-          id: `annotation-${Date.now()}`,
-          type: selectedTool,
-          points: currentAnnotation,
-          color: "#000000",
-          timestamp: Date.now(),
-        };
-
-        setAnnotations((prev) => [...prev, newAnnotation]);
-        onAnnotationChange([...annotations, newAnnotation]);
-        setCurrentAnnotation([]);
       }
     }
+    
+    // Then use ray casting algorithm to check if point is inside polygon
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const intersect = 
+        ((polygon[i].y > point.y) !== (polygon[j].y > point.y)) &&
+        (point.x < (polygon[j].x - polygon[i].x) * (point.y - polygon[i].y) / 
+                   (polygon[j].y - polygon[i].y) + polygon[i].x);
+      if (intersect) inside = !inside;
+    }
+    
+    return inside;
   };
+
+  // Handle undo
+  const handleUndo = useCallback(() => {
+    if (isCreatingPolygon && currentAnnotation.length > 1) {
+      // Remove the last point from the polygon being created
+      setCurrentAnnotation(prev => prev.slice(0, -1));
+      return;
+    }
+    
+    if (annotations.length === 0) return;
+    
+    // Remove the last annotation
+    const lastAnnotation = annotations[annotations.length - 1];
+    deleteAnnotation(lastAnnotation.id);
+    
+    // Record interaction event only if session is active
+    if (isSessionActive) {
+      recordInteractionEvent('annotation_delete', {
+        relatedAnnotationId: lastAnnotation.id
+      });
+    }
+  }, [annotations, deleteAnnotation, recordInteractionEvent, isCreatingPolygon, currentAnnotation, isSessionActive]);
+
+  // Sync with parent component's tool state
+  useEffect(() => {
+    setIsPolygonMode(selectedTool === "frame" || selectedTool === "area");
+  }, [selectedTool]);
+
+  // Notify parent of selection changes
+  useEffect(() => {
+    onSelectionChange(selectedCount);
+  }, [selectedCount, onSelectionChange]);
+
+  // When tool changes externally, update any related state
+  useEffect(() => {
+    // If switching away from polygon tools, reset polygon creation state
+    if (isCreatingPolygon && !(selectedTool === "frame" || selectedTool === "area")) {
+      setIsCreatingPolygon(false);
+      setCurrentAnnotation([]);
+      setTempMousePos(null);
+    }
+    
+    // Log tool changes for debugging
+    console.log("Tool changed to:", selectedTool);
+  }, [selectedTool, isCreatingPolygon]);
+
+  // Group tool handler - ensure it works when the tool is selected
+  useEffect(() => {
+    if (selectedTool === "group" && selectedCount >= 2) {
+      console.log("Group tool activated with selections:", selectedCount);
+      handleCreateGroup();
+      // After grouping, switch back to select tool
+      onToolChange("select");
+    }
+  }, [selectedTool, selectedCount, handleCreateGroup, onToolChange]);
 
   return (
-    <div 
-      ref={containerRef} 
+    <div
+      ref={containerRef}
       className="relative w-full h-full overflow-hidden"
-      style={{ background: '#FBFAF8' }}
+      style={{ cursor: selectedTool === "select" || isShiftKeyDown ? "default" : "crosshair" }}
     >
-      {/* Canvas Controls */}
-      <div 
-        className="absolute top-4 right-4 flex gap-2 p-2 rounded-lg z-10"
-        style={{
-          animation: 'slideDown 0.3s ease-out forwards',
-          opacity: 0,
-          transform: 'translateY(-20px)'
-        }}
-      >
+      <canvas
+        ref={canvasRef}
+        className="absolute top-0 left-0 w-full h-full"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        onDoubleClick={handleDoubleClick}
+      />
+      
+      {/* Undo button */}
+      <div className="absolute top-4 right-4 z-10">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="transition-transform hover:scale-105 active:scale-95">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => {
-                    if (annotations.length > 0) {
-                      const newAnnotations = annotations.slice(0, -1);
-                      setAnnotations(newAnnotations);
-                      onAnnotationChange(newAnnotations);
-                    }
-                  }}
-                  className="h-8 w-8"
-                >
-                  <Undo2 className="h-4 w-4" />
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleUndo}
+                disabled={annotations.length === 0 && !isCreatingPolygon}
+                className="bg-transparent backdrop-blur-none border-none shadow-none hover:bg-white/10"
+              >
+                <Undo2 className="h-5 w-5" />
+              </Button>
             </TooltipTrigger>
-            <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
+            <TooltipContent>
+              <p>
+                {isCreatingPolygon && currentAnnotation.length > 1 
+                  ? "Undo Last Point" 
+                  : "Undo Last Annotation"}
+              </p>
+            </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </div>
       
-      {/* Main Canvas */}
-      <canvas
-        ref={canvasRef}
-        style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "contain"
-        }}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-      />
-
-      {/* Image is loaded programmatically in useEffect */}
-
-      {/* Drawing feedback indicator */}
-      {isDrawing && (
-        <div 
-          className="absolute bottom-4 left-4 bg-primary text-primary-foreground rounded-full px-3 py-1 text-sm"
-          style={{
-            animation: 'fadeIn 0.3s ease-out forwards',
-            opacity: 0
-          }}
-        >
-          Drawing {selectedTool}...
+      {/* Polygon creation helper */}
+      {isCreatingPolygon && (
+        <div className="absolute bottom-4 left-4 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-lg text-sm shadow-sm">
+          <div className="flex flex-col gap-1">
+            <p className="font-medium">Creating Polygon</p>
+            <p className="text-xs text-muted-foreground">
+              • Click to add points<br />
+              • Click the first point to close the path<br />
+              • Esc to cancel
+            </p>
+          </div>
         </div>
       )}
     </div>

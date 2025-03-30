@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { Point, Annotation, TraceItem } from "../types/annotations"
+import { Point, Annotation, TraceItem, Tool } from "../types/annotations"
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Combines class names using clsx and tailwind-merge
@@ -21,14 +22,49 @@ export function formatTimeGap(ms: number): string {
 }
 
 /**
- * Formats coordinates for display in the UI
+ * Formats coordinates for display in the traceboard
  * @param points Array of points
- * @returns Formatted coordinate string
+ * @param type Tool type
+ * @returns Formatted coordinates string
  */
-export function formatCoordinates(points: Point[]): string {
-  return points
-    .map((p) => `(${Math.round(p.x)},${Math.round(p.y)})`)
-    .join(", ")
+export function formatCoordinates(points: Point[], type: Tool): string {
+  if (points.length === 0) return "";
+
+  switch (type) {
+    case "point":
+      return `(${Math.round(points[0].x)},${Math.round(points[0].y)})`;
+    
+    case "line":
+      if (points.length < 2) return `Start: (${Math.round(points[0].x)},${Math.round(points[0].y)})`;
+      return `(${Math.round(points[0].x)},${Math.round(points[0].y)}) → (${Math.round(points[1].x)},${Math.round(points[1].y)})`;
+    
+    case "frame":
+      // For polygon frames with 3+ points
+      if (points.length > 2) {
+        return `Polygon: ${points.length} points`;
+      }
+      // For legacy rectangle frames
+      if (points.length < 2) return `Top-left: (${Math.round(points[0].x)},${Math.round(points[0].y)})`;
+      return `Rectangle: (${Math.round(points[0].x)},${Math.round(points[0].y)}) to (${Math.round(points[1].x)},${Math.round(points[1].y)})`;
+    
+    case "area":
+      // For polygon areas with 3+ points
+      if (points.length > 2) {
+        return `Polygon area: ${points.length} points`;
+      }
+      // For legacy rectangle areas
+      if (points.length < 2) return `Top-left: (${Math.round(points[0].x)},${Math.round(points[0].y)})`;
+      return `Rectangle area: (${Math.round(points[0].x)},${Math.round(points[0].y)}) to (${Math.round(points[1].x)},${Math.round(points[1].y)})`;
+    
+    case "freehand":
+      return `Freehand: ${points.length} points`;
+    
+    case "group":
+      return "Group created";
+    
+    default:
+      return points.map(p => `(${Math.round(p.x)},${Math.round(p.y)})`).join(", ");
+  }
 }
 
 /**
@@ -43,28 +79,28 @@ export function formatFreehandTrace(coordinates: string): string {
 }
 
 /**
- * Processes annotations into trace items for display
+ * Processes annotation data for display in the traceboard
  * @param annotations Array of annotations
- * @returns Array of trace items
+ * @returns Formatted trace items for display
  */
 export function processTracesForDisplay(annotations: Annotation[]): TraceItem[] {
   const annotationTraces = annotations.map((annotation) => ({
     id: annotation.timestamp.toString(),
     timestamp: new Date(annotation.timestamp).toLocaleTimeString(),
     type: annotation.type,
-    coordinates: formatCoordinates(annotation.points),
+    coordinates: formatCoordinates(annotation.points, annotation.type),
     groupId: annotation.groupId,
     numericTimestamp: annotation.timestamp
-  }))
+  }));
 
   const groupTraces = annotations
     .filter((a) => a.groupId)
     .reduce((groups: TraceItem[], annotation) => {
       const groupExists = groups.some(
         (g) => g.id === `group-${annotation.groupId}`,
-      )
+      );
       if (!groupExists && annotation.groupId) {
-        const groupTimestamp = parseInt(annotation.groupId.split("-")[1] || "0")
+        const groupTimestamp = parseInt(annotation.groupId.split("-")[1] || "0");
         groups.push({
           id: `group-${annotation.groupId}`,
           timestamp: new Date(groupTimestamp).toLocaleTimeString(),
@@ -72,14 +108,14 @@ export function processTracesForDisplay(annotations: Annotation[]): TraceItem[] 
           coordinates: "Group created",
           groupId: annotation.groupId,
           numericTimestamp: groupTimestamp
-        })
+        });
       }
-      return groups
-    }, [])
+      return groups;
+    }, []);
 
   return [...annotationTraces, ...groupTraces].sort(
     (a, b) => (a.numericTimestamp || 0) - (b.numericTimestamp || 0)
-  )
+  );
 }
 
 /**

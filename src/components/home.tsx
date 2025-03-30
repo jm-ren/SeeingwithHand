@@ -3,6 +3,7 @@ import AnnotationCanvas from "./AnnotationCanvas";
 import ToolboxPanel from "./ToolboxPanel";
 import SessionControls from "./SessionControls";
 import Traceboard from "./Traceboard";
+import { useSession } from "../context/SessionContext";
 
 type Tool =
   | "point"
@@ -40,12 +41,14 @@ const Home = () => {
   // State management
   const [selectedTool, setSelectedTool] = useState<Tool>("point");
   const [selectedCount, setSelectedCount] = useState(0);
-  const [isRecording, setIsRecording] = useState(false);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [countdown, setCountdown] = useState(10);
   const [showCountdown, setShowCountdown] = useState(true);
   const [visualizationCanvas, setVisualizationCanvas] =
     useState<HTMLCanvasElement | null>(null);
+    
+  // Use session context
+  const { isSessionActive } = useSession();
 
   // Countdown effect
   useEffect(() => {
@@ -56,7 +59,6 @@ const Home = () => {
       return () => clearTimeout(timer);
     } else if (showCountdown && countdown === 0) {
       setShowCountdown(false);
-      handleSessionStart();
     }
   }, [countdown, showCountdown]);
 
@@ -73,17 +75,8 @@ const Home = () => {
     setSelectedTool(tool);
   }, []);
 
-  const handleSessionStart = useCallback(() => {
-    setIsRecording(true);
-  }, []);
-
-  const handleSessionStop = useCallback(() => {
-    setIsRecording(false);
-  }, []);
-
   const handleReset = useCallback(() => {
     setAnnotations([]);
-    setIsRecording(false);
     setCountdown(10);
     setShowCountdown(true);
   }, []);
@@ -240,22 +233,14 @@ const Home = () => {
           />
         </div>
         <SessionControls
-          isRecording={isRecording}
-          onStart={handleSessionStart}
-          onStop={handleSessionStop}
           onReset={handleReset}
           countdown={countdown}
           showCountdown={showCountdown}
           onTransform={handleTransform}
+          disabled={false}
         />
       </div>
-
-      {/* Traceboard */}
-      <Traceboard
-        countdown={countdown}
-        showCountdown={showCountdown}
-        traces={processTracesForDisplay()}
-      />
+      <Traceboard traces={processTracesForDisplay()} />
     </div>
   );
 };

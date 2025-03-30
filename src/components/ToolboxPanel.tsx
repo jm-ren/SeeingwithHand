@@ -30,6 +30,7 @@ interface ToolInfo {
   icon: React.ReactNode;
   shortcut: string;
   section: "implicit" | "explicit" | "utility";
+  description?: string;
 }
 
 interface ToolboxPanelProps {
@@ -44,24 +45,28 @@ const tools: ToolInfo[] = [
     icon: <Pencil size={17} />,
     shortcut: "F",
     section: "implicit",
+    description: "Draw freehand strokes"
   },
   {
     name: "point",
     icon: <DotSquare size={17} />,
     shortcut: "1",
     section: "explicit",
+    description: "Place single points"
   },
   {
     name: "line",
     icon: <PenLine size={17} />,
     shortcut: "2",
     section: "explicit",
+    description: "Create straight lines"
   },
   {
     name: "frame",
     icon: <Square size={17} />,
     shortcut: "3",
     section: "explicit",
+    description: "Create polygons with multiple points - click to add points, click first point to close"
   },
   {
     name: "area",
@@ -84,18 +89,21 @@ const tools: ToolInfo[] = [
     ),
     shortcut: "4",
     section: "explicit",
+    description: "Create filled polygons with multiple points - click to add points, click first point to close"
   },
   {
     name: "select",
     icon: <MousePointer2 size={17} />,
     shortcut: "S",
     section: "utility",
+    description: "Select and move annotations"
   },
   {
     name: "group",
     icon: <Group size={17} />,
     shortcut: "G",
     section: "utility",
+    description: "Group selected annotations (select 2+ items first)"
   },
 ];
 
@@ -124,7 +132,13 @@ const ToolboxPanel = ({
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      const tool = tools.find((t) => t.shortcut === e.key);
+      // Prevent triggering shortcuts when typing in input fields
+      if (e.target instanceof HTMLInputElement || 
+          e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
+      const tool = tools.find((t) => t.shortcut.toLowerCase() === e.key.toLowerCase());
       if (tool) {
         handleToolClick(tool.name);
       }
@@ -132,7 +146,7 @@ const ToolboxPanel = ({
 
     window.addEventListener("keypress", handleKeyPress);
     return () => window.removeEventListener("keypress", handleKeyPress);
-  }, []);
+  }, [groupButtonEnabled]);
 
   const renderToolSection = (section: "implicit" | "explicit" | "utility") => {
     const sectionTools = tools.filter((tool) => tool.section === section);
@@ -154,13 +168,22 @@ const ToolboxPanel = ({
                 {tool.icon}
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="right" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 300, letterSpacing: '-0.01em' }}>
-              <p>
-                {tool.name.charAt(0).toUpperCase() + tool.name.slice(1)}
-                <span className="ml-2 text-muted-foreground">
-                  [{tool.shortcut}]
-                </span>
-              </p>
+            <TooltipContent 
+              side="right" 
+              className="max-w-[250px] text-sm" 
+              style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 300, letterSpacing: '-0.01em' }}
+            >
+              <div>
+                <div className="font-medium mb-0.5">
+                  {tool.name.charAt(0).toUpperCase() + tool.name.slice(1)}
+                  <span className="ml-2 text-muted-foreground font-light">
+                    [{tool.shortcut}]
+                  </span>
+                </div>
+                {tool.description && (
+                  <p className="text-xs text-muted-foreground">{tool.description}</p>
+                )}
+              </div>
             </TooltipContent>
           </Tooltip>
         ))}

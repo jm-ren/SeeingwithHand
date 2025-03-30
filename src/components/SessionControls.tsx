@@ -15,29 +15,33 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "./ui/dialog";
+import { useSession } from "../context/SessionContext";
 
 interface SessionControlsProps {
-  onStart?: () => void;
-  onStop?: () => void;
   onTransform?: () => void;
   onReset?: () => void;
-  isRecording?: boolean;
   disabled?: boolean;
   countdown?: number;
   showCountdown?: boolean;
 }
 
 const SessionControls = ({
-  onStart = () => {},
-  onStop = () => {},
   onTransform = () => {},
   onReset = () => {},
-  isRecording = false,
   disabled = false,
   countdown = 0,
   showCountdown = false,
 }: SessionControlsProps) => {
   const [showVisualization, setShowVisualization] = useState(false);
+  const { isSessionActive, startSession, endSession } = useSession();
+
+  const handleStartStop = () => {
+    if (isSessionActive) {
+      endSession();
+    } else {
+      startSession();
+    }
+  };
 
   return (
     <div 
@@ -61,18 +65,18 @@ const SessionControls = ({
               <TooltipTrigger asChild>
                 <div className="transform-gpu transition-transform duration-150 hover:translate-y-[-2px] active:translate-y-[1px]">
                   <Button
-                    variant={isRecording ? "outline" : "ghost"}
+                    variant={isSessionActive ? "outline" : "ghost"}
                     size="sm"
-                    onClick={isRecording ? onStop : onStart}
+                    onClick={handleStartStop}
                     disabled={disabled}
                     className="w-[28px] h-[28px] p-[4.4px]"
                     style={{
-                      backgroundColor: isRecording ? '#DD4627' : 'transparent',
-                      color: isRecording ? 'white' : 'inherit',
-                      borderColor: isRecording ? '#DD4627' : undefined
+                      backgroundColor: isSessionActive ? '#DD4627' : 'transparent',
+                      color: isSessionActive ? 'white' : 'inherit',
+                      borderColor: isSessionActive ? '#DD4627' : undefined
                     }}
                   >
-                    {isRecording ? (
+                    {isSessionActive ? (
                       <StopCircle className="h-[17px] w-[17px]" />
                     ) : (
                       <PlayCircle className="h-[17px] w-[17px]" />
@@ -81,7 +85,7 @@ const SessionControls = ({
                 </div>
               </TooltipTrigger>
               <TooltipContent style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 300, letterSpacing: '-0.01em' }}>
-                <p>{isRecording ? "Stop Recording" : "Start Recording"}</p>
+                <p>{isSessionActive ? "Stop Recording" : "Start Recording"}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -140,7 +144,7 @@ const SessionControls = ({
 
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 330, letterSpacing: '-0.01em' }}>
-            {isRecording ? "Recording in progress..." : "Ready to record"}
+            {isSessionActive ? "Recording in progress..." : "Ready to record"}
           </span>
         </div>
       </Card>
