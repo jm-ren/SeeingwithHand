@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState, useLayoutEffect } from "react";
+import React, { useEffect, useRef, useState, useLayoutEffect, useCallback } from "react";
 import { ScrollArea } from "./ui/scroll-area";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Clock, DotSquare, PenLine, Square, Pencil, Group, ArrowDown } from "lucide-react";
+import { useAnnotations } from "../context/AnnotationContext";
 
 interface TraceItem {
   id: string;
@@ -15,38 +16,11 @@ interface TraceItem {
 }
 
 interface TraceboardProps {
-  traces?: TraceItem[];
   countdown?: number;
   showCountdown?: boolean;
 }
 
-const defaultTraces: TraceItem[] = [
-  {
-    id: "1",
-    timestamp: "10:30:15",
-    type: "point",
-    coordinates: "x: 100, y: 200",
-  },
-  {
-    id: "2",
-    timestamp: "10:30:20",
-    type: "line",
-    coordinates: "start(100,200), end(300,400)",
-  },
-  {
-    id: "3",
-    timestamp: "10:30:25",
-    type: "frame",
-    coordinates: "top-left(50,50), bottom-right(150,150)",
-  },
-  {
-    id: "4",
-    timestamp: "10:30:30",
-    type: "group",
-    coordinates: "Group created",
-    groupId: "group-1234567890",
-  },
-];
+const defaultTraces: TraceItem[] = [];
 
 const getToolIcon = (type: TraceItem["type"]) => {
   switch (type) {
@@ -87,20 +61,71 @@ const getToolIcon = (type: TraceItem["type"]) => {
   }
 };
 
-// Helper function to format freehand trace coordinates
+// Helper function to format freehand traces
 const formatFreehandTrace = (coordinates: string) => {
-  return "Stroke drawn";
+  if (coordinates.length > 30) {
+    return `${coordinates.substring(0, 27)}...`;
+  }
+  return coordinates;
 };
 
 const Traceboard = ({
-  traces = defaultTraces,
   countdown = 0,
   showCountdown = false,
 }: TraceboardProps) => {
+  // Get annotations from context
+  const { annotations, groups } = useAnnotations();
+  const [traces, setTraces] = useState<TraceItem[]>(defaultTraces);
+  
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const previousTracesLength = useRef(traces.length);
   const isNearBottom = useRef(true);
+  
+  // Process traces for display
+  const processTracesForDisplay = useCallback((): TraceItem[] => {
+    const annotationTraces = annotations.map((annotation) => ({
+      id: annotation.timestamp.toString(),
+      timestamp: new Date(annotation.timestamp).toLocaleTimeString(),
+      type: annotation.type,
+      coordinates: annotation.points
+        .map((p) => `(${Math.round(p.x)},${Math.round(p.y)})`)
+        .join(", "),
+      groupId: annotation.groupId,
+      numericTimestamp: annotation.timestamp
+    }));
+
+    const groupTraces = annotations
+      .filter((a) => a.groupId)
+      .reduce((result: TraceItem[], annotation) => {
+        const groupExists = result.some(
+          (g) => g.id === `group-${annotation.groupId}`,
+        );
+        if (!groupExists && annotation.groupId) {
+          const groupTimestamp = parseInt(annotation.groupId?.split("-")[1] || "0");
+          result.push({
+            id: `group-${annotation.groupId}`,
+            timestamp: new Date(groupTimestamp).toLocaleTimeString(),
+            type: "group",
+            coordinates: "Group created",
+            groupId: annotation.groupId,
+            numericTimestamp: groupTimestamp
+          });
+        }
+        return result;
+      }, []);
+
+    return [...annotationTraces, ...groupTraces].sort(
+      (a, b) => (a.numericTimestamp || 0) - (b.numericTimestamp || 0)
+    );
+  }, [annotations]);
+  
+  // Update traces when annotations change
+  useEffect(() => {
+    const processedTraces = processTracesForDisplay();
+    setTraces(processedTraces);
+    console.log("Traces updated from annotations:", processedTraces.length);
+  }, [annotations, groups, processTracesForDisplay]);
   
   // Helper function to generate a short group ID
   const getShortGroupId = (groupId: string): string => {

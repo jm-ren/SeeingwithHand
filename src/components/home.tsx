@@ -4,6 +4,9 @@ import ToolboxPanel from "./ToolboxPanel";
 import SessionControls from "./SessionControls";
 import Traceboard from "./Traceboard";
 import { useSession } from "../context/SessionContext";
+import { useAnnotations } from "../context/AnnotationContext";
+import { Annotation } from "../types/annotations";
+import { processTracesForDisplay } from "../lib/utils";
 
 type Tool =
   | "point"
@@ -19,15 +22,6 @@ interface Point {
   y: number;
 }
 
-interface Annotation {
-  id: string;
-  type: Tool;
-  points: Point[];
-  color: string;
-  timestamp: number;
-  groupId?: string;
-}
-
 interface TraceItem {
   id: string;
   timestamp: string;
@@ -41,14 +35,14 @@ const Home = () => {
   // State management
   const [selectedTool, setSelectedTool] = useState<Tool>("point");
   const [selectedCount, setSelectedCount] = useState(0);
-  const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [countdown, setCountdown] = useState(10);
   const [showCountdown, setShowCountdown] = useState(true);
   const [visualizationCanvas, setVisualizationCanvas] =
     useState<HTMLCanvasElement | null>(null);
     
-  // Use session context
+  // Use contexts - get resetSession from AnnotationContext
   const { isSessionActive } = useSession();
+  const { resetSession, annotations } = useAnnotations();
 
   // Countdown effect
   useEffect(() => {
@@ -76,13 +70,17 @@ const Home = () => {
   }, []);
 
   const handleReset = useCallback(() => {
-    setAnnotations([]);
+    // Call the resetSession from AnnotationContext to clear everything
+    resetSession();
+    
+    // Update local state
     setCountdown(10);
     setShowCountdown(true);
-  }, []);
+    console.log("Canvas and timeline have been reset");
+  }, [resetSession]);
 
   const handleAnnotationChange = useCallback((newAnnotations: Annotation[]) => {
-    setAnnotations(newAnnotations);
+    // This is now handled by AnnotationContext
   }, []);
 
   const processTracesForDisplay = useCallback((): TraceItem[] => {
@@ -130,58 +128,109 @@ const Home = () => {
 
     const ctx = visualizationCanvas.getContext("2d");
     if (!ctx) {
-      console.error("Could not get canvas context");
+      console.error("Could not get visualization canvas context");
       return;
     }
 
+    // Clear the canvas
+    ctx.clearRect(0, 0, visualizationCanvas.width, visualizationCanvas.height);
+
+    // Load the image
     const image = new Image();
     image.crossOrigin = "anonymous";
 
     image.onload = () => {
       try {
-        // Clear canvas
-        ctx.clearRect(
-          0,
-          0,
-          visualizationCanvas.width,
-          visualizationCanvas.height,
-        );
+        // Draw the image
+        ctx.drawImage(image, 0, 0, visualizationCanvas.width, visualizationCanvas.height);
 
-        // Draw image with proper scaling
-        ctx.drawImage(
-          image,
-          0,
-          0,
-          visualizationCanvas.width,
-          visualizationCanvas.height,
-        );
-
-        // Add semi-transparent overlay
-        ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-        ctx.fillRect(
-          0,
-          0,
-          visualizationCanvas.width,
-          visualizationCanvas.height,
-        );
-
-        // Draw heatmap
+        // Draw annotations
         annotations.forEach((annotation) => {
-          annotation.points.forEach((point) => {
-            const x =
-              (point.x / visualizationCanvas.width) * visualizationCanvas.width;
-            const y =
-              (point.y / visualizationCanvas.height) *
-              visualizationCanvas.height;
+          ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
+          ctx.lineWidth = 2;
 
-            ctx.beginPath();
-            const gradient = ctx.createRadialGradient(x, y, 0, x, y, 50);
-            gradient.addColorStop(0, "rgba(255, 0, 0, 0.3)");
-            gradient.addColorStop(1, "rgba(255, 0, 0, 0)");
-            ctx.fillStyle = gradient;
-            ctx.arc(x, y, 50, 0, Math.PI * 2);
-            ctx.fill();
-          });
+          switch (annotation.type) {
+            case "point":
+              if (annotation.points[0]) {
+                ctx.beginPath();
+                ctx.arc(
+                  annotation.points[0].x,
+                  annotation.points[0].y,
+                  5,
+                  0,
+                  Math.PI * 2
+                );
+                ctx.stroke();
+              }
+              break;
+            case "line":
+              if (annotation.points[0] && annotation.points[1]) {
+                ctx.beginPath();
+                ctx.moveTo(annotation.points[0].x, annotation.points[0].y);
+                ctx.lineTo(annotation.points[1].x, annotation.points[1].y);
+                ctx.stroke();
+              }
+              break;
+            case "frame":
+              if (annotation.points.length >= 3) {
+                ctx.beginPath();
+                ctx.moveTo(annotation.points[0].x, annotation.points[0].y);
+                annotation.points.forEach((point) => {
+                  ctx.lineTo(point.x, point.y);
+                });
+                ctx.closePath();
+                ctx.stroke();
+              } else if (annotation.points[0] && annotation.points[1]) {
+                const width = annotation.points[1].x - annotation.points[0].x;
+                const height = annotation.points[1].y - annotation.points[0].y;
+                ctx.strokeRect(
+                  annotation.points[0].x,
+                  annotation.points[0].y,
+                  width,
+                  height
+                );
+              }
+              break;
+            case "area":
+              if (annotation.points.length >= 3) {
+                ctx.beginPath();
+                ctx.moveTo(annotation.points[0].x, annotation.points[0].y);
+                annotation.points.forEach((point) => {
+                  ctx.lineTo(point.x, point.y);
+                });
+                ctx.closePath();
+                ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
+                ctx.fill();
+                ctx.stroke();
+              } else if (annotation.points[0] && annotation.points[1]) {
+                const width = annotation.points[1].x - annotation.points[0].x;
+                const height = annotation.points[1].y - annotation.points[0].y;
+                ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
+                ctx.fillRect(
+                  annotation.points[0].x,
+                  annotation.points[0].y,
+                  width,
+                  height
+                );
+                ctx.strokeRect(
+                  annotation.points[0].x,
+                  annotation.points[0].y,
+                  width,
+                  height
+                );
+              }
+              break;
+            case "freehand":
+              if (annotation.points.length > 0) {
+                ctx.beginPath();
+                ctx.moveTo(annotation.points[0].x, annotation.points[0].y);
+                annotation.points.forEach((point) => {
+                  ctx.lineTo(point.x, point.y);
+                });
+                ctx.stroke();
+              }
+              break;
+          }
         });
 
         // Create a blob from the canvas and trigger download
@@ -228,7 +277,6 @@ const Home = () => {
             selectedTool={selectedTool}
             onAnnotationChange={handleAnnotationChange}
             onSelectionChange={setSelectedCount}
-            initialAnnotations={annotations}
             onToolChange={handleToolSelect}
           />
         </div>
@@ -240,7 +288,7 @@ const Home = () => {
           disabled={false}
         />
       </div>
-      <Traceboard traces={processTracesForDisplay()} />
+      <Traceboard />
     </div>
   );
 };
