@@ -144,7 +144,12 @@ const SessionControls = ({
 
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 330, letterSpacing: '-0.01em' }}>
-            {isSessionActive ? "Recording in progress..." : "Ready to record"}
+            {isSessionActive 
+              ? "Recording in progress..." 
+              : showCountdown && countdown > 0
+                ? `Starting in ${countdown}...`
+                : "Ready to record"
+            }
           </span>
         </div>
       </Card>

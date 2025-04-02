@@ -248,7 +248,7 @@ const AnnotationCanvas = ({
       // Draw group backgrounds first
       groups.forEach((group) => {
         const groupAnnotations = annotations.filter(
-          (a) => a.groupId === group.id,
+          (a) => a.groupIds?.includes(group.id),
         );
         if (groupAnnotations.length === 0) return;
 
@@ -1129,20 +1129,6 @@ const AnnotationCanvas = ({
           </Tooltip>
         </TooltipProvider>
       </div>
-      
-      {/* Polygon creation helper */}
-      {isCreatingPolygon && (
-        <div className="absolute bottom-4 left-4 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-lg text-sm shadow-sm">
-          <div className="flex flex-col gap-1">
-            <p className="font-medium">Creating Polygon</p>
-            <p className="text-xs text-muted-foreground">
-              • Click to add points<br />
-              • Click the first point to close the path<br />
-              • Esc to cancel
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

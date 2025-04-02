@@ -89,29 +89,37 @@ export function processTracesForDisplay(annotations: Annotation[]): TraceItem[] 
     timestamp: new Date(annotation.timestamp).toLocaleTimeString(),
     type: annotation.type,
     coordinates: formatCoordinates(annotation.points, annotation.type),
-    groupId: annotation.groupId,
+    // Use the first groupId for display purposes if multiple exist
+    groupId: annotation.groupIds?.[0],
     numericTimestamp: annotation.timestamp
   }));
 
-  const groupTraces = annotations
-    .filter((a) => a.groupId)
-    .reduce((groups: TraceItem[], annotation) => {
-      const groupExists = groups.some(
-        (g) => g.id === `group-${annotation.groupId}`,
-      );
-      if (!groupExists && annotation.groupId) {
-        const groupTimestamp = parseInt(annotation.groupId.split("-")[1] || "0");
-        groups.push({
-          id: `group-${annotation.groupId}`,
-          timestamp: new Date(groupTimestamp).toLocaleTimeString(),
-          type: "group",
-          coordinates: "Group created",
-          groupId: annotation.groupId,
-          numericTimestamp: groupTimestamp
-        });
-      }
-      return groups;
-    }, []);
+  // Create a set to track unique groupIds that we've processed
+  const processedGroupIds = new Set<string>();
+  const groupTraces: TraceItem[] = [];
+
+  // Process all annotations to find all groups
+  annotations.forEach(annotation => {
+    if (annotation.groupIds && annotation.groupIds.length > 0) {
+      // For each group this annotation belongs to
+      annotation.groupIds.forEach(groupId => {
+        // Only process each group once
+        if (!processedGroupIds.has(groupId)) {
+          processedGroupIds.add(groupId);
+          
+          const groupTimestamp = parseInt(groupId.split("-")[1] || "0");
+          groupTraces.push({
+            id: `group-${groupId}`,
+            timestamp: new Date(groupTimestamp).toLocaleTimeString(),
+            type: "group",
+            coordinates: "Group created",
+            groupId: groupId,
+            numericTimestamp: groupTimestamp
+          });
+        }
+      });
+    }
+  });
 
   return [...annotationTraces, ...groupTraces].sort(
     (a, b) => (a.numericTimestamp || 0) - (b.numericTimestamp || 0)

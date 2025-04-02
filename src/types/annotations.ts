@@ -27,7 +27,7 @@ export interface Annotation {
   color: string;
   timestamp: number;
   selected?: boolean;
-  groupId?: string;
+  groupIds?: string[];
 }
 
 // Represents a group of annotations

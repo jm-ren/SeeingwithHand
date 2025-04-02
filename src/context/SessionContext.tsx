@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 
 interface InteractionEventData {
   position?: { x: number; y: number };
@@ -7,7 +7,7 @@ interface InteractionEventData {
   data?: Record<string, any>;
 }
 
-interface SessionContextProps {
+interface SessionContextType {
   isSessionActive: boolean;
   sessionId: string | null;
   startSession: () => void;
@@ -16,17 +16,21 @@ interface SessionContextProps {
     eventType: string,
     data?: InteractionEventData
   ) => void;
+  countdown: number;
+  showCountdown: boolean;
+  setCountdown: React.Dispatch<React.SetStateAction<number>>;
+  setShowCountdown: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const SessionContext = createContext<SessionContextProps>({
-  isSessionActive: false,
-  sessionId: null,
-  startSession: () => {},
-  endSession: () => {},
-  recordInteractionEvent: () => {},
-});
+const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
-export const useSession = () => useContext(SessionContext);
+export const useSession = () => {
+  const context = useContext(SessionContext);
+  if (context === undefined) {
+    throw new Error('useSession must be used within a SessionProvider');
+  }
+  return context;
+};
 
 interface SessionProviderProps {
   children: React.ReactNode;
@@ -36,6 +40,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   const [isSessionActive, setIsSessionActive] = useState<boolean>(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [events, setEvents] = useState<any[]>([]);
+  const [countdown, setCountdown] = useState(10);
+  const [showCountdown, setShowCountdown] = useState(true);
 
   const generateSessionId = () => {
     return `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -92,16 +98,33 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     [isSessionActive, sessionId]
   );
 
+  // Auto-start session when countdown reaches zero
+  useEffect(() => {
+    if (showCountdown && countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(countdown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (showCountdown && countdown === 0) {
+      setShowCountdown(false);
+      startSession(); // Auto-start session when countdown reaches zero
+    }
+  }, [countdown, showCountdown, startSession]);
+
+  const value = {
+    isSessionActive,
+    sessionId,
+    startSession,
+    endSession,
+    recordInteractionEvent,
+    countdown,
+    showCountdown,
+    setCountdown,
+    setShowCountdown
+  };
+
   return (
-    <SessionContext.Provider
-      value={{
-        isSessionActive,
-        sessionId,
-        startSession,
-        endSession,
-        recordInteractionEvent,
-      }}
-    >
+    <SessionContext.Provider value={value}>
       {children}
     </SessionContext.Provider>
   );

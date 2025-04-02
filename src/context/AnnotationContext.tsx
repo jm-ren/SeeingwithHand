@@ -117,17 +117,25 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       timestamp,
     };
     
-    // Update annotations with the group ID
+    // Update annotations with the group ID - add to existing groupIds array instead of replacing
     setAnnotations(prev => 
-      prev.map(annotation => 
-        annotationIds.includes(annotation.id) 
-          ? { ...annotation, groupId } 
-          : annotation
-      )
+      prev.map(annotation => {
+        if (annotationIds.includes(annotation.id)) {
+          // Add to existing groupIds array or create new array if none exists
+          const updatedGroupIds = annotation.groupIds 
+            ? [...annotation.groupIds, groupId]
+            : [groupId];
+          
+          return { ...annotation, groupIds: updatedGroupIds };
+        }
+        return annotation;
+      })
     );
     
     // Add the group
     setGroups(prev => [...prev, newGroup]);
+    
+    console.log(`Created group ${groupId} with ${annotationIds.length} annotations`);
   }, []);
 
   const startRecording = useCallback(() => {
