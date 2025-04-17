@@ -16,6 +16,8 @@ import {
   DialogTrigger,
 } from "./ui/dialog";
 import { useSession } from "../context/SessionContext";
+import { useAnnotations } from "../context/AnnotationContext";
+import EyeVisualization from "./EyeVisualization";
 
 interface SessionControlsProps {
   onTransform?: () => void;
@@ -34,6 +36,7 @@ const SessionControls = ({
 }: SessionControlsProps) => {
   const [showVisualization, setShowVisualization] = useState(false);
   const { isSessionActive, startSession, endSession } = useSession();
+  const { annotations } = useAnnotations();
 
   const handleStartStop = () => {
     if (isSessionActive) {
@@ -128,15 +131,32 @@ const SessionControls = ({
                 </Button>
               </div>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
-              <DialogHeader>
-                <DialogTitle style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 500, letterSpacing: '-0.02em' }}>Interaction Pattern Visualization</DialogTitle>
+            <DialogContent className="sm:max-w-[667px] max-h-[614px] p-0 bg-[#f1f1f1] border-0 overflow-hidden">
+              <DialogHeader className="px-6 pt-6 pb-0">
+                <DialogTitle style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 500, letterSpacing: '-0.02em' }}>ArchEyes Visualization</DialogTitle>
               </DialogHeader>
+              
+              {/* Eye Visualization Component */}
+              <div className="w-full h-full flex items-center justify-center p-0">
+                {annotations.length > 0 ? (
+                  <EyeVisualization 
+                    annotations={annotations} 
+                    className="h-full w-full"
+                    autoPlay={true}
+                  />
+                ) : (
+                  <div className="h-[400px] w-full flex items-center justify-center text-muted-foreground">
+                    No annotations available to visualize
+                  </div>
+                )}
+              </div>
+              
+              {/* Keep the original canvas but hidden */}
               <canvas
                 id="visualizationCanvas"
-                className="h-[400px] w-full bg-muted rounded-lg"
-                width={600}
-                height={400}
+                className="hidden"
+                width={0}
+                height={0}
               />
             </DialogContent>
           </Dialog>

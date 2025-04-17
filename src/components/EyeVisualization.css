@@ -1,0 +1,126 @@
+.eye-modal {
+  background-color: #f1f1f1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 24px;
+}
+
+.eye-container {
+  position: relative;
+  width: 395px;
+  height: 227px;
+  margin: 0 auto;
+}
+
+.eye-outline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: transparent;
+  border-radius: 0;
+}
+
+.iris-frame {
+  position: absolute;
+  width: 202px;
+  height: 203px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background-image: url('/iris.svg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  border-radius: 0;
+}
+
+.pupil-frame {
+  background-color: #10191b;
+  border: none;
+  border-radius: 50%;
+  width: 66px;
+  height: 66px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.5s ease, height 0.5s ease;
+}
+
+/* For the annotation stripes */
+.annotation-stripe {
+  position: absolute;
+  transform-origin: center center;
+  background-color: rgba(100, 100, 100, 0.7);
+}
+
+/* Controls area */
+.controls-container {
+  margin-top: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 500px;
+}
+
+.legend-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  font-size: 12px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background-color: #e0e0e0;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #4D90FE;
+  border-radius: 2px;
+  transition: width 0.1s ease-in-out;
+}
+
+.controls-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-grow: 1;
+}
+
+.speed-label {
+  font-size: 12px;
+  white-space: nowrap;
+  color: #666;
+} 
