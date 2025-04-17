@@ -153,10 +153,12 @@ const AnnotationStripe: React.FC<AnnotationStripeProps> = ({
   // Calculate the stripe height (from pupil edge to iris edge)
   const height = irisRadius - pupilRadius;
   
-  // Calculate the center position of the stripe based on angle
+  // Calculate the start and end positions
   const radians = (angle - 90) * Math.PI / 180;
-  const stripeX = centerX + (pupilRadius + height / 2) * Math.cos(radians);
-  const stripeY = centerY + (pupilRadius + height / 2) * Math.sin(radians);
+  
+  // Position stripe so it starts exactly at pupil edge and goes to iris edge
+  const stripeX = centerX + (pupilRadius + height/2) * Math.cos(radians);
+  const stripeY = centerY + (pupilRadius + height/2) * Math.sin(radians);
   
   return (
     <div 
