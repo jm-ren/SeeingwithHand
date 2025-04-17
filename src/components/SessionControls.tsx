@@ -131,11 +131,7 @@ const SessionControls = ({
                 </Button>
               </div>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[667px] max-h-[614px] p-0 bg-[#f1f1f1] border-0 overflow-hidden">
-              <DialogHeader className="px-6 pt-6 pb-0">
-                <DialogTitle style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 500, letterSpacing: '-0.02em' }}>ArchEyes Visualization</DialogTitle>
-              </DialogHeader>
-              
+            <DialogContent className="sm:max-w-[620px] h-[420px] p-0 bg-[#f1f1f1] border-0 overflow-hidden">
               {/* Eye Visualization Component */}
               <div className="w-full h-full flex items-center justify-center p-0">
                 {annotations.length > 0 ? (
@@ -145,7 +141,7 @@ const SessionControls = ({
                     autoPlay={true}
                   />
                 ) : (
-                  <div className="h-[400px] w-full flex items-center justify-center text-muted-foreground">
+                  <div className="h-full w-full flex items-center justify-center text-muted-foreground">
                     No annotations available to visualize
                   </div>
                 )}

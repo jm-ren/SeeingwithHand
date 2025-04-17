@@ -138,17 +138,16 @@ const AnnotationStripe: React.FC<AnnotationStripeProps> = ({
   maxPerimeter,
   visible 
 }) => {
+  // Calculate time position without compression
   const timePosition = (event.timestamp - startTime) / sessionDuration;
+  
   const angle = timePosition * 360;
   
-  // Scale width based on perimeter (min 2, max 15 degrees)
-  const width = 2 + (event.perimeter / maxPerimeter) * 13;
-  
   // Calculate position and dimensions of the stripe
-  const centerX = 197.5; // Center of the eye and iris (x-coordinate)
-  const centerY = 113.5; // Center of the eye and iris (y-coordinate)
-  const irisRadius = 101; // Radius of the iris frame (half of 202px)
-  const pupilRadius = 33; // Radius of the pupil frame (half of 66px)
+  const centerX = 200; // Center X of the container (400/2)
+  const centerY = 110; // Center Y of the container (200/2) + 5% offset (10px)
+  const irisRadius = 93.5; // Radius of the iris frame (half of 187px)
+  const pupilRadius = 31; // Radius of the pupil frame (half of 62px)
   
   // Calculate the stripe height (from pupil edge to iris edge)
   const height = irisRadius - pupilRadius;
@@ -159,6 +158,10 @@ const AnnotationStripe: React.FC<AnnotationStripeProps> = ({
   // Position stripe so it starts exactly at pupil edge and goes to iris edge
   const stripeX = centerX + (pupilRadius + height/2) * Math.cos(radians);
   const stripeY = centerY + (pupilRadius + height/2) * Math.sin(radians);
+  
+  // Scale width based on perimeter (min 3.12, max 18.72 degrees)
+  // 30% larger than the previous values
+  const width = 3.12 + (event.perimeter / maxPerimeter) * 18.72;
   
   return (
     <div 
@@ -232,8 +235,8 @@ const EyeVisualization: React.FC<EyeVisualizationProps> = ({
     }
     
     // Base iris dimensions
-    const irisWidth = 202; // Updated to match actual iris SVG width
-    const irisHeight = 203; // Updated to match actual iris SVG height
+    const irisWidth = 187; // Updated to match scaled iris SVG width
+    const irisHeight = 187; // Updated to match scaled iris SVG height
     
     return {
       width: irisWidth * sizeFactor,
@@ -338,6 +341,8 @@ const EyeVisualization: React.FC<EyeVisualizationProps> = ({
           <img src="/eye.svg" alt="Eye outline" width="100%" height="100%" />
         </div>
         <div className="iris-frame"></div>
+        {/* Inner stroke for iris */}
+        <div className="iris-inner-stroke"></div>
         <div
           className="pupil-frame"
           style={{
@@ -364,22 +369,8 @@ const EyeVisualization: React.FC<EyeVisualizationProps> = ({
         })}
       </div>
       
-      <div className="controls-container">
-        {/* Legend */}
-        <div className="legend-container">
-          {Object.entries(TOOL_COLORS).map(([tool, color]) => (
-            tool !== 'select' && (
-              <div key={tool} className="legend-item">
-                <div 
-                  className="legend-color" 
-                  style={{ backgroundColor: color }} 
-                />
-                <span>{tool.charAt(0).toUpperCase() + tool.slice(1)}</span>
-              </div>
-            )
-          ))}
-        </div>
-        
+      {/* Progress bar and controls are hidden */}
+      <div className="controls-container" style={{ display: 'none' }}>
         {/* Progress bar */}
         <div className="progress-bar">
           <div 
