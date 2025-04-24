@@ -32,8 +32,8 @@
 
 .iris-frame {
   position: absolute;
-  width: 160px;
-  height: 160px;
+  width: 189px;
+  height: 189px;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -63,8 +63,8 @@
   background-color: #10191B;
   border: 1.03px solid #131718;
   border-radius: 50%;
-  width: 54px;
-  height: 54px;
+  width: 63px;
+  height: 63px;
   position: absolute;
   left: 50%;
   top: 50%;

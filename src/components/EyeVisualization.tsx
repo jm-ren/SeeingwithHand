@@ -129,6 +129,8 @@ interface AnnotationStripeProps {
   sessionDuration: number;
   maxPerimeter: number;
   visible: boolean;
+  index: number;
+  totalEvents: number;
 }
 
 const AnnotationStripe: React.FC<AnnotationStripeProps> = ({ 
@@ -136,18 +138,19 @@ const AnnotationStripe: React.FC<AnnotationStripeProps> = ({
   startTime, 
   sessionDuration,
   maxPerimeter,
-  visible 
+  visible,
+  index,
+  totalEvents
 }) => {
-  // Calculate time position without compression
-  const timePosition = (event.timestamp - startTime) / sessionDuration;
-  
-  const angle = timePosition * 360;
+  // Calculate position based on index instead of timestamp
+  const position = index / totalEvents;
+  const angle = position * 360;
   
   // Calculate position and dimensions of the stripe
   const centerX = 200; // Center X of the container (400/2)
   const centerY = 170; // Center Y of the container (340/2) 
-  const irisRadius = 80; // Radius of the iris frame (half of 160px)
-  const pupilRadius = 27; // Radius of the pupil frame (half of 54px)
+  const irisRadius = 94.5; // Updated to match new iris size (189/2)
+  const pupilRadius = 31.5; // Updated to match new pupil size (63/2)
   
   // Calculate the stripe height (from pupil edge to iris edge)
   const height = irisRadius - pupilRadius;
@@ -160,7 +163,6 @@ const AnnotationStripe: React.FC<AnnotationStripeProps> = ({
   const stripeY = centerY + (pupilRadius + height/2) * Math.sin(radians);
   
   // Scale width based on perimeter (min 3, max 15 degrees)
-  // Scaled appropriately for new sizes
   const width = 3 + (event.perimeter / maxPerimeter) * 15;
   
   return (
@@ -351,6 +353,8 @@ const EyeVisualization: React.FC<EyeVisualizationProps> = ({
               sessionDuration={visualizationData.sessionDuration}
               maxPerimeter={Math.max(...visualizationData.events.map(e => e.perimeter))}
               visible={isStatic || (event.timestamp - visualizationData.events[0]?.timestamp || 0) / 1000 <= progress * visualizationData.sessionDuration}
+              index={index}
+              totalEvents={visualizationData.events.length}
             />
           ))}
         </div>
