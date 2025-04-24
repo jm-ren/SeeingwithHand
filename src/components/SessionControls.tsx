@@ -131,7 +131,7 @@ const SessionControls = ({
                 </Button>
               </div>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[620px] h-[420px] p-0 bg-[#f1f1f1] border-0 overflow-hidden">
+            <DialogContent className="sm:max-w-[620px] h-[540px] p-0 bg-[#f1f1f1] border-0 overflow-hidden">
               {/* Eye Visualization Component */}
               <div className="w-full h-full flex items-center justify-center p-0">
                 {annotations.length > 0 ? (

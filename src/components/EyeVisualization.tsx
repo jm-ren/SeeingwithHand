@@ -145,9 +145,9 @@ const AnnotationStripe: React.FC<AnnotationStripeProps> = ({
   
   // Calculate position and dimensions of the stripe
   const centerX = 200; // Center X of the container (400/2)
-  const centerY = 110; // Center Y of the container (200/2) + 5% offset (10px)
-  const irisRadius = 93.5; // Radius of the iris frame (half of 187px)
-  const pupilRadius = 31; // Radius of the pupil frame (half of 62px)
+  const centerY = 170; // Center Y of the container (340/2) 
+  const irisRadius = 80; // Radius of the iris frame (half of 160px)
+  const pupilRadius = 27; // Radius of the pupil frame (half of 54px)
   
   // Calculate the stripe height (from pupil edge to iris edge)
   const height = irisRadius - pupilRadius;
@@ -159,9 +159,9 @@ const AnnotationStripe: React.FC<AnnotationStripeProps> = ({
   const stripeX = centerX + (pupilRadius + height/2) * Math.cos(radians);
   const stripeY = centerY + (pupilRadius + height/2) * Math.sin(radians);
   
-  // Scale width based on perimeter (min 3.12, max 18.72 degrees)
-  // 30% larger than the previous values
-  const width = 3.12 + (event.perimeter / maxPerimeter) * 18.72;
+  // Scale width based on perimeter (min 3, max 15 degrees)
+  // Scaled appropriately for new sizes
+  const width = 3 + (event.perimeter / maxPerimeter) * 15;
   
   return (
     <div 
@@ -235,8 +235,8 @@ const EyeVisualization: React.FC<EyeVisualizationProps> = ({
     }
     
     // Base iris dimensions
-    const irisWidth = 187; // Updated to match scaled iris SVG width
-    const irisHeight = 187; // Updated to match scaled iris SVG height
+    const irisWidth = 160; // Updated to match actual iris SVG width
+    const irisHeight = 160; // Updated to match actual iris SVG height
     
     return {
       width: irisWidth * sizeFactor,
@@ -338,85 +338,43 @@ const EyeVisualization: React.FC<EyeVisualizationProps> = ({
     <div className={`eye-modal ${className}`}>
       <div className="eye-container">
         <div className="eye-outline">
-          <img src="/eye.svg" alt="Eye outline" width="100%" height="100%" />
-        </div>
-        <div className="iris-frame"></div>
-        {/* Inner stroke for iris */}
-        <div className="iris-inner-stroke"></div>
-        <div
-          className="pupil-frame"
-          style={{
-            width: `${pupilDimensions.width}px`,
-            height: `${pupilDimensions.height}px`
-          }}
-        ></div>
-        
-        {/* Annotation Stripes */}
-        {visualizationData.events.map(event => {
-          // For static view show all events, for animation show only events up to current time
-          const isVisible = isStatic || event.timestamp <= currentTime;
-          
-          return (
+          <div className="iris-frame" />
+          <div 
+            className="pupil-frame"
+            style={calculatePupilSize()}
+          />
+          {visualizationData.events.map((event, index) => (
             <AnnotationStripe
               key={event.id}
               event={event}
               startTime={visualizationData.events[0]?.timestamp || 0}
-              sessionDuration={visualizationData.sessionDuration * 1000}
-              maxPerimeter={maxPerimeter}
-              visible={isVisible}
+              sessionDuration={visualizationData.sessionDuration}
+              maxPerimeter={Math.max(...visualizationData.events.map(e => e.perimeter))}
+              visible={isStatic || (event.timestamp - visualizationData.events[0]?.timestamp || 0) / 1000 <= progress * visualizationData.sessionDuration}
             />
-          );
-        })}
+          ))}
+        </div>
       </div>
       
-      {/* Progress bar and controls are hidden */}
-      <div className="controls-container" style={{ display: 'none' }}>
-        {/* Progress bar */}
-        <div className="progress-bar">
-          <div 
-            className="progress-fill" 
-            style={{ width: `${progress * 100}%` }}
-          />
-        </div>
+      {/* Controls section */}
+      <div className="controls-container">
+        <Button 
+          variant="ghost" 
+          size="icon"
+          onClick={togglePlay}
+          className="control-button"
+        >
+          {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+        </Button>
         
-        {/* Controls */}
-        <div className="controls-row">
-          <Button 
-            variant="outline" 
-            size="icon"
-            onClick={togglePlay}
-          >
-            {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            size="icon"
-            onClick={handleReset}
-          >
-            <RotateCcw size={16} />
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            size="icon"
-            onClick={toggleMode}
-          >
-            {isStatic ? <RefreshCw size={16} /> : <Eye size={16} />}
-          </Button>
-          
-          <div className="speed-control">
-            <span className="speed-label">Speed: {playbackSpeed}x</span>
-            <SimpleSlider
-              value={playbackSpeed}
-              min={1}
-              max={3}
-              step={1}
-              onChange={handleSpeedChange}
-              className="flex-grow"
-            />
-          </div>
-        </div>
+        <Button 
+          variant="ghost" 
+          size="icon"
+          onClick={handleReset}
+          className="control-button"
+        >
+          <RotateCcw size={18} />
+        </Button>
       </div>
     </div>
   );
