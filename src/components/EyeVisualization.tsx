@@ -22,6 +22,14 @@ interface EyeVisualizationProps {
   annotations: Annotation[];
   className?: string;
   autoPlay?: boolean;
+  isPlaying?: boolean;
+  onPlayPause?: () => void;
+  onReset?: () => void;
+  progress?: number;
+  onProgressChange?: (value: number) => void;
+  isStatic?: boolean;
+  onStaticChange?: (value: boolean) => void;
+  onAutoPlayComplete?: () => void;
 }
 
 // Constants for visualization
@@ -182,38 +190,79 @@ const AnnotationStripe: React.FC<AnnotationStripeProps> = ({
   );
 };
 
-const EyeVisualization: React.FC<EyeVisualizationProps> = ({ 
+export const EyeVisualization: React.FC<EyeVisualizationProps> = ({
   annotations, 
   className = "",
-  autoPlay = false 
+  autoPlay = false,
+  isPlaying = false,
+  onPlayPause = () => {},
+  onReset = () => {},
+  progress = 0,
+  onProgressChange = () => {},
+  isStatic = false,
+  onStaticChange = () => {},
+  onAutoPlayComplete = () => {},
 }) => {
-  // Animation state
-  const [isPlaying, setIsPlaying] = useState(autoPlay);
-  const [isStatic, setIsStatic] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState(2);
-  const [progress, setProgress] = useState(0); // 0 to 1
+  const [playbackSpeed] = useState(4); // Fixed at 4x speed
   const [visualizationData, setVisualizationData] = useState<VisualizationData>({ sessionDuration: 0, events: [] });
   
-  // Animation frame reference
   const animationRef = useRef<number>(0);
-  
-  // Process annotations when they change
-  useEffect(() => {
-    console.log("EyeVisualization: Processing annotations", annotations.length);
-    const data = processAnnotationsForVisualization(annotations);
-    setVisualizationData(data);
-    console.log("EyeVisualization: Visualization data", data);
+  const lastTimeRef = useRef<number>(0);
+
+  const startAnimation = useCallback(() => {
+    const animate = (timestamp: number) => {
+      if (!lastTimeRef.current) {
+        lastTimeRef.current = timestamp;
+      }
+      
+      const deltaTime = timestamp - lastTimeRef.current;
+      lastTimeRef.current = timestamp;
+      
+      // Calculate progress based on number of events
+      // Total duration should be (number of events / playbackSpeed) seconds
+      const totalDuration = visualizationData.events.length / playbackSpeed; // in seconds
+      const progressDelta = deltaTime / (totalDuration * 1000);
+      const newProgress = Math.min(progress + progressDelta, 1);
+      
+      onProgressChange(newProgress);
+      
+      if (newProgress < 1) {
+        animationRef.current = requestAnimationFrame(animate);
+      }
+    };
     
-    // Reset progress when new data is loaded
-    setProgress(0);
-    
-    // Start playing if autoPlay is enabled and there are events to show
-    if (autoPlay && data.events.length > 0) {
-      setIsPlaying(true);
-    } else {
-      setIsPlaying(false);
+    animationRef.current = requestAnimationFrame(animate);
+  }, [playbackSpeed, visualizationData.events.length, onProgressChange, progress]);
+
+  const stopAnimation = useCallback(() => {
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = 0;
     }
-  }, [annotations, autoPlay]);
+  }, []);
+
+  useEffect(() => {
+    setVisualizationData(processAnnotationsForVisualization(annotations));
+  }, [annotations]);
+
+  useEffect(() => {
+    if (isPlaying) {
+      startAnimation();
+    } else {
+      stopAnimation();
+    }
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [isPlaying, playbackSpeed, startAnimation, stopAnimation]);
+
+  useEffect(() => {
+    if (autoPlay && visualizationData.events.length > 0) {
+      onPlayPause();
+    }
+  }, [autoPlay, visualizationData.events.length, onPlayPause]);
   
   // Calculate pupil size based on session duration
   const calculatePupilSize = useCallback((): { width: number, height: number } => {
@@ -246,80 +295,33 @@ const EyeVisualization: React.FC<EyeVisualizationProps> = ({
     };
   }, [visualizationData.sessionDuration]);
   
-  // Animation loop
-  useEffect(() => {
-    if (!isPlaying) return;
-    
-    let lastTimestamp = 0;
-    const animationSpeed = playbackSpeed; // Speed multiplier
-    
-    const animate = (timestamp: number) => {
-      if (!lastTimestamp) lastTimestamp = timestamp;
-      
-      // Calculate delta time and advance progress
-      const deltaTime = timestamp - lastTimestamp;
-      
-      // Progress speed: complete in ~5 seconds at 1x speed
-      const progressDelta = (deltaTime / 5000) * animationSpeed;
-      
-      // Update progress
-      setProgress(prev => {
-        const newProgress = prev + progressDelta;
-        
-        // Stop at the end
-        if (newProgress >= 1) {
-          setIsPlaying(false);
-          return 1;
-        }
-        
-        return newProgress;
-      });
-      
-      // Schedule next frame
-      lastTimestamp = timestamp;
-      animationRef.current = requestAnimationFrame(animate);
-    };
-    
-    animationRef.current = requestAnimationFrame(animate);
-    
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, [isPlaying, playbackSpeed]);
-  
-  // Handle play/pause
-  const togglePlay = () => {
-    if (progress >= 1) {
-      // If at the end, restart
-      setProgress(0);
-      setIsPlaying(true);
-    } else {
-      setIsPlaying(!isPlaying);
-    }
-  };
-  
   // Handle reset
-  const handleReset = () => {
-    setProgress(0);
-    setIsPlaying(false);
-  };
+  const handleReset = useCallback(() => {
+    stopAnimation();
+    onProgressChange(0);
+    onReset();
+  }, [stopAnimation, onProgressChange, onReset]);
+
+  const handlePlayPause = useCallback(() => {
+    if (progress >= 1) {
+      onProgressChange(0);
+    }
+    onPlayPause();
+  }, [progress, onProgressChange, onPlayPause]);
   
   // Handle toggle between animated and static
-  const toggleMode = () => {
-    setIsStatic(!isStatic);
-    setIsPlaying(false);
+  const toggleMode = useCallback(() => {
+    onStaticChange(!isStatic);
+    onPlayPause();
     
     if (!isStatic) {
-      // Show final state when switching to static
-      setProgress(1);
+      onProgressChange(1);
     }
-  };
+  }, [isStatic, onStaticChange, onPlayPause, onProgressChange]);
   
   // Handle speed change
   const handleSpeedChange = (value: number) => {
-    setPlaybackSpeed(value);
+    // Speed change logic would be implemented here
   };
   
   // Calculate current time based on progress
@@ -352,33 +354,12 @@ const EyeVisualization: React.FC<EyeVisualizationProps> = ({
               startTime={visualizationData.events[0]?.timestamp || 0}
               sessionDuration={visualizationData.sessionDuration}
               maxPerimeter={Math.max(...visualizationData.events.map(e => e.perimeter))}
-              visible={isStatic || (event.timestamp - visualizationData.events[0]?.timestamp || 0) / 1000 <= progress * visualizationData.sessionDuration}
+              visible={isStatic || (index + 1) / visualizationData.events.length <= progress}
               index={index}
               totalEvents={visualizationData.events.length}
             />
           ))}
         </div>
-      </div>
-      
-      {/* Controls section */}
-      <div className="controls-container">
-        <Button 
-          variant="ghost" 
-          size="icon"
-          onClick={togglePlay}
-          className="control-button"
-        >
-          {isPlaying ? <Pause size={18} /> : <Play size={18} />}
-        </Button>
-        
-        <Button 
-          variant="ghost" 
-          size="icon"
-          onClick={handleReset}
-          className="control-button"
-        >
-          <RotateCcw size={18} />
-        </Button>
       </div>
     </div>
   );

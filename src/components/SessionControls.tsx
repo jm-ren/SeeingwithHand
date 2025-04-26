@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
-import { PlayCircle, StopCircle, LineChart, RotateCcw } from "lucide-react";
+import { PlayCircle, StopCircle, LineChart, RotateCcw, Pause } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -18,6 +18,7 @@ import {
 import { useSession } from "../context/SessionContext";
 import { useAnnotations } from "../context/AnnotationContext";
 import EyeVisualization from "./EyeVisualization";
+import Legend from "./Legend";
 
 interface SessionControlsProps {
   onTransform?: () => void;
@@ -35,6 +36,8 @@ const SessionControls = ({
   showCountdown = false,
 }: SessionControlsProps) => {
   const [showVisualization, setShowVisualization] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [visualizationProgress, setVisualizationProgress] = useState(0);
   const { isSessionActive, startSession, endSession } = useSession();
   const { annotations } = useAnnotations();
 
@@ -45,6 +48,30 @@ const SessionControls = ({
       startSession();
     }
   };
+
+  const handlePlayPause = () => {
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleVisualizationReset = () => {
+    setIsPlaying(false);
+    setVisualizationProgress(0);
+  };
+
+  // Handle visualization completion
+  useEffect(() => {
+    if (visualizationProgress >= 1) {
+      setIsPlaying(false);
+    }
+  }, [visualizationProgress]);
+
+  // Auto-play on modal open
+  useEffect(() => {
+    if (showVisualization) {
+      setVisualizationProgress(0);
+      setIsPlaying(true);
+    }
+  }, [showVisualization]);
 
   return (
     <div 
@@ -62,7 +89,7 @@ const SessionControls = ({
         borderBottom: 'none',
         borderLeft: 'none'
       }}>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -120,10 +147,7 @@ const SessionControls = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    setShowVisualization(true);
-                    onTransform();
-                  }}
+                  onClick={onTransform}
                   disabled={disabled}
                   className="w-[28px] h-[28px] p-[4.4px]"
                 >
@@ -131,29 +155,63 @@ const SessionControls = ({
                 </Button>
               </div>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[620px] h-[540px] p-0 bg-[#f1f1f1] border-0 overflow-hidden">
-              {/* Eye Visualization Component */}
-              <div className="w-full h-full flex items-center justify-center p-0">
+            <DialogContent className="sm:max-w-[900px] h-[700px] p-0 bg-white border-0 overflow-hidden relative fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+              <div className="w-full h-full flex flex-col items-center">
                 {annotations.length > 0 ? (
-                  <EyeVisualization 
-                    annotations={annotations} 
-                    className="h-full w-full"
-                    autoPlay={true}
-                  />
+                  <>
+                    <div className="flex-grow w-full flex items-center justify-center">
+                      <EyeVisualization 
+                        annotations={annotations} 
+                        className="h-full w-full"
+                        isPlaying={isPlaying}
+                        onPlayPause={handlePlayPause}
+                        onReset={handleVisualizationReset}
+                        progress={visualizationProgress}
+                        onProgressChange={setVisualizationProgress}
+                      />
+                    </div>
+                    
+                    {/* Progress bar */}
+                    <div className="w-full h-[6px] bg-[#FBFAF8]">
+                      <div 
+                        className="h-full bg-[#B0B7B9] transition-all duration-300 ease-linear"
+                        style={{ width: `${visualizationProgress * 100}%` }}
+                      />
+                    </div>
+
+                    {/* Legend */}
+                    <div className="w-full flex justify-center mb-16">
+                      <Legend />
+                    </div>
+
+                    {/* Controls */}
+                    <div className="w-full border-t border-[#E5E7EB]">
+                      <div className="grid grid-cols-2 divide-x divide-[#E5E7EB]">
+                        <button 
+                          className="flex items-center justify-center py-6 hover:bg-gray-50 transition-colors"
+                          onClick={handlePlayPause}
+                        >
+                          {isPlaying ? (
+                            <Pause className="h-6 w-6" />
+                          ) : (
+                            <PlayCircle className="h-6 w-6" />
+                          )}
+                        </button>
+                        <button 
+                          className="flex items-center justify-center py-6 hover:bg-gray-50 transition-colors"
+                          onClick={handleVisualizationReset}
+                        >
+                          <RotateCcw className="h-6 w-6" />
+                        </button>
+                      </div>
+                    </div>
+                  </>
                 ) : (
                   <div className="h-full w-full flex items-center justify-center text-muted-foreground">
                     No annotations available to visualize
                   </div>
                 )}
               </div>
-              
-              {/* Keep the original canvas but hidden */}
-              <canvas
-                id="visualizationCanvas"
-                className="hidden"
-                width={0}
-                height={0}
-              />
             </DialogContent>
           </Dialog>
         </div>
