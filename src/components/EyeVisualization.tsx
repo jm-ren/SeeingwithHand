@@ -203,7 +203,7 @@ export const EyeVisualization: React.FC<EyeVisualizationProps> = ({
   onStaticChange = () => {},
   onAutoPlayComplete = () => {},
 }) => {
-  const [playbackSpeed] = useState(4); // Fixed at 4x speed
+  const [playbackSpeed, setPlaybackSpeed] = useState(4);
   const [visualizationData, setVisualizationData] = useState<VisualizationData>({ sessionDuration: 0, events: [] });
   
   const animationRef = useRef<number>(0);
@@ -218,10 +218,8 @@ export const EyeVisualization: React.FC<EyeVisualizationProps> = ({
       const deltaTime = timestamp - lastTimeRef.current;
       lastTimeRef.current = timestamp;
       
-      // Calculate progress based on number of events
-      // Total duration should be (number of events / playbackSpeed) seconds
-      const totalDuration = visualizationData.events.length / playbackSpeed; // in seconds
-      const progressDelta = deltaTime / (totalDuration * 1000);
+      // Calculate progress based on session duration and playback speed
+      const progressDelta = (deltaTime / 1000) * (playbackSpeed / visualizationData.sessionDuration);
       const newProgress = Math.min(progress + progressDelta, 1);
       
       onProgressChange(newProgress);
@@ -232,7 +230,7 @@ export const EyeVisualization: React.FC<EyeVisualizationProps> = ({
     };
     
     animationRef.current = requestAnimationFrame(animate);
-  }, [playbackSpeed, visualizationData.events.length, onProgressChange, progress]);
+  }, [playbackSpeed, visualizationData.sessionDuration, onProgressChange, progress]);
 
   const stopAnimation = useCallback(() => {
     if (animationRef.current) {
@@ -321,7 +319,7 @@ export const EyeVisualization: React.FC<EyeVisualizationProps> = ({
   
   // Handle speed change
   const handleSpeedChange = (value: number) => {
-    // Speed change logic would be implemented here
+    setPlaybackSpeed(value);
   };
   
   // Calculate current time based on progress
@@ -354,7 +352,7 @@ export const EyeVisualization: React.FC<EyeVisualizationProps> = ({
               startTime={visualizationData.events[0]?.timestamp || 0}
               sessionDuration={visualizationData.sessionDuration}
               maxPerimeter={Math.max(...visualizationData.events.map(e => e.perimeter))}
-              visible={isStatic || (index + 1) / visualizationData.events.length <= progress}
+              visible={isStatic || (event.timestamp - (visualizationData.events[0]?.timestamp || 0)) / 1000 <= progress * visualizationData.sessionDuration}
               index={index}
               totalEvents={visualizationData.events.length}
             />
