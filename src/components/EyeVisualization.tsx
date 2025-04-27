@@ -30,6 +30,7 @@ interface EyeVisualizationProps {
   isStatic?: boolean;
   onStaticChange?: (value: boolean) => void;
   onAutoPlayComplete?: () => void;
+  playbackSpeed?: number;
 }
 
 // Constants for visualization
@@ -47,7 +48,7 @@ const TOOL_COLORS = {
 const calculatePerimeter = (annotation: Annotation): number => {
   const { type, points } = annotation;
   
-  if (points.length === 0) return 0;
+  if (points.length === 0 && type !== 'point' && type !== 'group') return 0;
   
   switch (type) {
     case "point":
@@ -202,23 +203,27 @@ export const EyeVisualization: React.FC<EyeVisualizationProps> = ({
   isStatic = false,
   onStaticChange = () => {},
   onAutoPlayComplete = () => {},
+  playbackSpeed = 4, // Default to 4x if not provided
 }) => {
-  const [playbackSpeed, setPlaybackSpeed] = useState(4);
   const [visualizationData, setVisualizationData] = useState<VisualizationData>({ sessionDuration: 0, events: [] });
   
   const animationRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
 
   const startAnimation = useCallback(() => {
+    lastTimeRef.current = 0; // Reset timer when starting animation
     const animate = (timestamp: number) => {
       if (!lastTimeRef.current) {
         lastTimeRef.current = timestamp;
+        // Skip the first frame delta calculation after reset
+        animationRef.current = requestAnimationFrame(animate);
+        return;
       }
       
       const deltaTime = timestamp - lastTimeRef.current;
       lastTimeRef.current = timestamp;
       
-      // Calculate progress based on session duration and playback speed
+      // Calculate progress based on session duration and playback speed prop
       const progressDelta = (deltaTime / 1000) * (playbackSpeed / visualizationData.sessionDuration);
       const newProgress = Math.min(progress + progressDelta, 1);
       
@@ -316,11 +321,6 @@ export const EyeVisualization: React.FC<EyeVisualizationProps> = ({
       onProgressChange(1);
     }
   }, [isStatic, onStaticChange, onPlayPause, onProgressChange]);
-  
-  // Handle speed change
-  const handleSpeedChange = (value: number) => {
-    setPlaybackSpeed(value);
-  };
   
   // Calculate current time based on progress
   const currentTime = visualizationData.events.length > 0

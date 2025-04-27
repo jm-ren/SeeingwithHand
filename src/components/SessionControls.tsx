@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
-import { PlayCircle, StopCircle, LineChart, RotateCcw, Pause } from "lucide-react";
+import { PlayCircle, StopCircle, LineChart, RotateCcw, Pause, FastForward } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -28,6 +28,8 @@ interface SessionControlsProps {
   showCountdown?: boolean;
 }
 
+const availableSpeeds = [1, 2, 4, 8];
+
 const SessionControls = ({
   onTransform = () => {},
   onReset = () => {},
@@ -38,8 +40,11 @@ const SessionControls = ({
   const [showVisualization, setShowVisualization] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [visualizationProgress, setVisualizationProgress] = useState(0);
+  const [speedIndex, setSpeedIndex] = useState(availableSpeeds.indexOf(4)); // Start at 4x speed index
   const { isSessionActive, startSession, endSession } = useSession();
   const { annotations } = useAnnotations();
+
+  const currentSpeed = availableSpeeds[speedIndex];
 
   const handleStartStop = () => {
     if (isSessionActive) {
@@ -53,9 +58,15 @@ const SessionControls = ({
     setIsPlaying(!isPlaying);
   };
 
-  const handleVisualizationReset = () => {
-    setIsPlaying(false);
+  // Renamed from handleVisualizationReset to handleRestartAnimation
+  const handleRestartAnimation = () => {
     setVisualizationProgress(0);
+    setIsPlaying(true);
+  };
+
+  // Handle speed change
+  const handleSpeedUp = () => {
+    setSpeedIndex((prevIndex) => (prevIndex + 1) % availableSpeeds.length);
   };
 
   // Handle visualization completion
@@ -165,9 +176,10 @@ const SessionControls = ({
                         className="h-full w-full"
                         isPlaying={isPlaying}
                         onPlayPause={handlePlayPause}
-                        onReset={handleVisualizationReset}
+                        onReset={handleRestartAnimation}
                         progress={visualizationProgress}
                         onProgressChange={setVisualizationProgress}
+                        playbackSpeed={currentSpeed}
                       />
                     </div>
                     
@@ -189,19 +201,16 @@ const SessionControls = ({
                       <div className="grid grid-cols-2 divide-x divide-[#E5E7EB]">
                         <button 
                           className="flex items-center justify-center py-6 hover:bg-gray-50 transition-colors"
-                          onClick={handlePlayPause}
-                        >
-                          {isPlaying ? (
-                            <Pause className="h-6 w-6" />
-                          ) : (
-                            <PlayCircle className="h-6 w-6" />
-                          )}
-                        </button>
-                        <button 
-                          className="flex items-center justify-center py-6 hover:bg-gray-50 transition-colors"
-                          onClick={handleVisualizationReset}
+                          onClick={handleRestartAnimation}
                         >
                           <RotateCcw className="h-6 w-6" />
+                        </button>
+                        <button 
+                          className="flex items-center justify-center gap-2 py-6 hover:bg-gray-50 transition-colors"
+                          onClick={handleSpeedUp}
+                        >
+                          <FastForward className="h-6 w-6" />
+                          <span className="text-sm font-medium">{currentSpeed}x</span>
                         </button>
                       </div>
                     </div>
