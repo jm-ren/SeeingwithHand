@@ -203,7 +203,7 @@ export const EyeVisualization: React.FC<EyeVisualizationProps> = ({
   isStatic = false,
   onStaticChange = () => {},
   onAutoPlayComplete = () => {},
-  playbackSpeed = 4, // Default to 4x if not provided
+  playbackSpeed = 16, // Default to 16x if not provided
 }) => {
   const [visualizationData, setVisualizationData] = useState<VisualizationData>({ sessionDuration: 0, events: [] });
   

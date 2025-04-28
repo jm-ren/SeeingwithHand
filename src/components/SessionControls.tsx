@@ -28,7 +28,8 @@ interface SessionControlsProps {
   showCountdown?: boolean;
 }
 
-const availableSpeeds = [1, 2, 4, 8];
+const baseSpeedMultiplier = 16;
+const relativeSpeeds = [1, 2, 4, 8];
 
 const SessionControls = ({
   onTransform = () => {},
@@ -40,11 +41,12 @@ const SessionControls = ({
   const [showVisualization, setShowVisualization] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [visualizationProgress, setVisualizationProgress] = useState(0);
-  const [speedIndex, setSpeedIndex] = useState(availableSpeeds.indexOf(4)); // Start at 4x speed index
+  const [speedIndex, setSpeedIndex] = useState(0); // Start at index 0 (1x relative, which is 16x absolute)
   const { isSessionActive, startSession, endSession } = useSession();
   const { annotations } = useAnnotations();
 
-  const currentSpeed = availableSpeeds[speedIndex];
+  const relativeSpeed = relativeSpeeds[speedIndex];
+  const currentAbsoluteSpeed = relativeSpeed * baseSpeedMultiplier;
 
   const handleStartStop = () => {
     if (isSessionActive) {
@@ -66,7 +68,7 @@ const SessionControls = ({
 
   // Handle speed change
   const handleSpeedUp = () => {
-    setSpeedIndex((prevIndex) => (prevIndex + 1) % availableSpeeds.length);
+    setSpeedIndex((prevIndex) => (prevIndex + 1) % relativeSpeeds.length);
   };
 
   // Handle visualization completion
@@ -179,7 +181,7 @@ const SessionControls = ({
                         onReset={handleRestartAnimation}
                         progress={visualizationProgress}
                         onProgressChange={setVisualizationProgress}
-                        playbackSpeed={currentSpeed}
+                        playbackSpeed={currentAbsoluteSpeed}
                       />
                     </div>
                     
@@ -199,19 +201,38 @@ const SessionControls = ({
                     {/* Controls */}
                     <div className="w-full border-t border-[#E5E7EB]">
                       <div className="grid grid-cols-2 divide-x divide-[#E5E7EB]">
-                        <button 
-                          className="flex items-center justify-center py-6 hover:bg-gray-50 transition-colors"
-                          onClick={handleRestartAnimation}
-                        >
-                          <RotateCcw className="h-6 w-6" />
-                        </button>
-                        <button 
-                          className="flex items-center justify-center gap-2 py-6 hover:bg-gray-50 transition-colors"
-                          onClick={handleSpeedUp}
-                        >
-                          <FastForward className="h-6 w-6" />
-                          <span className="text-sm font-medium">{currentSpeed}x</span>
-                        </button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button 
+                                className="flex items-center justify-center py-6 hover:bg-gray-50 transition-colors"
+                                onClick={handleRestartAnimation}
+                              >
+                                <RotateCcw className="h-6 w-6" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Restart Animation</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        
+                        <TooltipProvider>
+                           <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button 
+                                className="flex items-center justify-center gap-2 py-6 hover:bg-gray-50 transition-colors"
+                                onClick={handleSpeedUp}
+                              >
+                                <FastForward className="h-6 w-6" />
+                                <span className="text-sm font-medium">{relativeSpeed}x</span>
+                              </button>
+                             </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Cycle Speed ({relativeSpeeds.map(s => `${s * baseSpeedMultiplier}x`).join(', ')})</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </div>
                   </>
