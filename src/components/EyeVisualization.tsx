@@ -144,16 +144,17 @@ interface AnnotationStripeProps {
 
 const AnnotationStripe: React.FC<AnnotationStripeProps> = ({ 
   event, 
-  startTime, 
+  startTime,
   sessionDuration,
   maxPerimeter,
   visible,
   index,
   totalEvents
 }) => {
-  // Calculate position based on index instead of timestamp
-  const position = index / totalEvents;
-  const angle = position * 360;
+  // Calculate position based on timestamp relative to session duration
+  const relativeTime = (event.timestamp - startTime) / 1000; // Time elapsed since start in seconds
+  const timePosition = sessionDuration > 0 ? relativeTime / sessionDuration : 0; // Position from 0 to 1
+  const angle = timePosition * 360;
   
   // Calculate position and dimensions of the stripe
   const centerX = 200; // Center X of the container (400/2)
