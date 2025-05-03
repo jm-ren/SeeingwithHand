@@ -91,24 +91,25 @@ const Traceboard = ({
       coordinates: annotation.points
         .map((p) => `(${Math.round(p.x)},${Math.round(p.y)})`)
         .join(", "),
-      groupId: annotation.groupId,
+      groupId: annotation.groupIds?.[0],
       numericTimestamp: annotation.timestamp
     }));
 
     const groupTraces = annotations
-      .filter((a) => a.groupId)
+      .filter((a) => a.groupIds && a.groupIds.length > 0)
       .reduce((result: TraceItem[], annotation) => {
+        const firstGroupId = annotation.groupIds![0];
         const groupExists = result.some(
-          (g) => g.id === `group-${annotation.groupId}`,
+          (g) => g.id === `group-${firstGroupId}`,
         );
-        if (!groupExists && annotation.groupId) {
-          const groupTimestamp = parseInt(annotation.groupId?.split("-")[1] || "0");
+        if (!groupExists) {
+          const groupTimestamp = parseInt(firstGroupId?.split("-")[1] || "0");
           result.push({
-            id: `group-${annotation.groupId}`,
+            id: `group-${firstGroupId}`,
             timestamp: new Date(groupTimestamp).toLocaleTimeString(),
             type: "group",
             coordinates: "Group created",
-            groupId: annotation.groupId,
+            groupId: firstGroupId,
             numericTimestamp: groupTimestamp
           });
         }
