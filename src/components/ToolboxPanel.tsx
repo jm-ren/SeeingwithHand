@@ -155,18 +155,26 @@ const ToolboxPanel = ({
         {sectionTools.map((tool) => (
           <Tooltip key={tool.name}>
             <TooltipTrigger asChild>
-              <Button
-                variant={activeTool === tool.name ? "secondary" : "ghost"}
-                className="w-[28px] h-[28px] p-[4.4px]"
-                onClick={() => handleToolClick(tool.name)}
-                disabled={tool.name === "group" && !groupButtonEnabled}
-                style={{
-                  opacity:
-                    tool.name === "group" && !groupButtonEnabled ? 0.5 : 1,
-                }}
-              >
-                {tool.icon}
-              </Button>
+              <div className="relative w-[28px] h-[28px] flex items-center justify-center">
+                <Button
+                  variant={activeTool === tool.name ? "secondary" : "ghost"}
+                  className="w-[28px] h-[28px] p-[4.4px]"
+                  onClick={() => handleToolClick(tool.name)}
+                  disabled={tool.name === "group" && !groupButtonEnabled}
+                  style={{
+                    opacity:
+                      tool.name === "group" && !groupButtonEnabled ? 0.5 : 1,
+                  }}
+                >
+                  {tool.icon}
+                </Button>
+                <span
+                  className="absolute right-0 top-[20px] text-[10px] text-[#C0C0C0] font-normal select-none pointer-events-none"
+                  style={{ letterSpacing: '0.01em' }}
+                >
+                  {tool.shortcut}
+                </span>
+              </div>
             </TooltipTrigger>
             <TooltipContent 
               side="right" 
