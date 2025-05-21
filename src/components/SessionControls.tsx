@@ -112,18 +112,23 @@ const SessionControls = ({
                     size="sm"
                     onClick={handleStartStop}
                     disabled={disabled}
-                    className="w-[28px] h-[28px] p-[4.4px]"
+                    className="flex items-center gap-2 h-[28px] px-2 py-1"
                     style={{
                       backgroundColor: isSessionActive ? '#DD4627' : 'transparent',
                       color: isSessionActive ? 'white' : 'inherit',
                       borderColor: isSessionActive ? '#DD4627' : undefined
                     }}
                   >
-                    {isSessionActive ? (
-                      <StopCircle className="h-[17px] w-[17px]" />
-                    ) : (
-                      <PlayCircle className="h-[17px] w-[17px]" />
-                    )}
+                    <div className="w-[28px] h-[28px] p-[4.4px] flex items-center justify-center">
+                      {isSessionActive ? (
+                        <StopCircle className="h-[17px] w-[17px]" />
+                      ) : (
+                        <PlayCircle className="h-[17px] w-[17px]" />
+                      )}
+                    </div>
+                    <span className="text-sm" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 400 }}>
+                      {isSessionActive ? "Stop Recording" : "Start Recording"}
+                    </span>
                   </Button>
                 </div>
               </TooltipTrigger>
@@ -142,9 +147,14 @@ const SessionControls = ({
                     size="sm"
                     onClick={onReset}
                     disabled={disabled}
-                    className="w-[28px] h-[28px] p-[4.4px]"
+                    className="flex items-center gap-2 h-[28px] px-2 py-1"
                   >
-                    <RotateCcw className="h-[17px] w-[17px]" />
+                    <div className="w-[28px] h-[28px] p-[4.4px] flex items-center justify-center">
+                      <RotateCcw className="h-[17px] w-[17px]" />
+                    </div>
+                    <span className="text-sm" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 400 }}>
+                      Reset Canvas
+                    </span>
                   </Button>
                 </div>
               </TooltipTrigger>
@@ -162,9 +172,14 @@ const SessionControls = ({
                   size="sm"
                   onClick={onTransform}
                   disabled={disabled}
-                  className="w-[28px] h-[28px] p-[4.4px]"
+                  className="flex items-center gap-2 h-[28px] px-2 py-1"
                 >
-                  <LineChart className="h-[17px] w-[17px]" />
+                  <div className="w-[28px] h-[28px] p-[4.4px] flex items-center justify-center">
+                    <LineChart className="h-[17px] w-[17px]" />
+                  </div>
+                  <span className="text-sm" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 400 }}>
+                    Visualize
+                  </span>
                 </Button>
               </div>
             </DialogTrigger>
