@@ -3,7 +3,7 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { Clock, DotSquare, PenLine, Square, Pencil, Group, ArrowDown } from "lucide-react";
+import { Clock, DotSquare, PenLine, Square, Pencil, Group, ArrowDown, Activity } from "lucide-react";
 import { useAnnotations } from "../context/AnnotationContext";
 
 interface TraceItem {
@@ -14,6 +14,7 @@ interface TraceItem {
   groupId?: string;
   numericTimestamp?: number;
   gestureType?: string;
+  duration?: number;
 }
 
 interface TraceboardProps {
@@ -58,7 +59,7 @@ const getToolIcon = (type: TraceItem["type"]) => {
         <div className="w-full h-full bg-primary-foreground rounded-sm"></div>
       </div>;
     case "hover":
-      return <Pencil className="h-4 w-4" />;
+      return <Activity className="h-4 w-4" />;
     default:
       return <Pencil className="h-4 w-4" />;
   }
@@ -97,6 +98,7 @@ const Traceboard = ({
       groupId: annotation.groupIds?.[0],
       numericTimestamp: annotation.timestamp,
       gestureType: annotation.gestureType || undefined,
+      duration: annotation.duration,
     }));
 
     const groupTraces = annotations
@@ -313,6 +315,13 @@ const Traceboard = ({
           .time-gap:hover .time-gap-text {
             opacity: 1;
           }
+
+          /* --- Custom: Hover trace card style --- */
+          .hover-trace-card {
+            background: transparent !important;
+            box-shadow: none !important;
+            border: none !important;
+          }
         `}
       </style>
 
@@ -333,73 +342,118 @@ const Traceboard = ({
 
       <ScrollArea ref={scrollAreaRef} className="flex-1 pb-[70px]">
         <div className="p-4 traces-container">
-          {traces.map((trace, index) => {
-            const timeGap = index > 0 
-              ? Math.max(0, (trace.numericTimestamp || 0) - (traces[index - 1].numericTimestamp || 0))
-              : 0;
-            
-            const gapHeight = Math.min(Math.max(timeGap / 1000 * 2, 16), 100);
-            const animationDelay = `${Math.min(index * 100, 800)}ms`;
+          {traces
+            .filter(trace => trace.type !== 'hover' || (trace.type === 'hover' && (trace.duration === undefined || trace.duration > 2000)))
+            .map((trace, index) => {
+              const timeGap = index > 0 
+                ? Math.max(0, (trace.numericTimestamp || 0) - (traces[index - 1].numericTimestamp || 0))
+                : 0;
+              
+              const gapHeight = Math.min(Math.max(timeGap / 1000 * 2, 16), 100);
+              const animationDelay = `${Math.min(index * 100, 800)}ms`;
 
-            const formatTimeGap = (ms: number) => {
-              if (ms < 1000) return `${ms}ms`;
-              const seconds = Math.round(ms / 100) / 10;
-              return `${seconds}s`;
-            };
+              const formatTimeGap = (ms: number) => {
+                if (ms < 1000) return `${ms}ms`;
+                const seconds = Math.round(ms / 100) / 10;
+                return `${seconds}s`;
+              };
 
-            return (
-              <div 
-                key={trace.id} 
-                data-trace-container
-                style={{ 
-                  marginBottom: index < traces.length - 1 ? gapHeight : 0,
-                  animationDelay
-                }}
-              >
-                <Card 
-                  className="p-4 transition-all hover:translate-y-[-2px] hover:shadow-md animate-slide-in"
-                  style={{
-                    animationDelay,
-                    height: '100%'
-                  }}
-                >
-                  <div className="flex items-start gap-2.5">
-                    <div className="bg-muted p-1.5 rounded">
-                      {getToolIcon(trace.type)}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <Badge variant="outline" className="text-xs" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', letterSpacing: '-0.01em', fontWeight: 400 }}>
-                          {trace.type.charAt(0).toUpperCase() + trace.type.slice(1)}
-                          {trace.groupId && (
-                            <span className="ml-1 text-muted-foreground" style={{ fontWeight: 300 }}>
-                              #{getShortGroupId(trace.groupId)}
-                            </span>
-                          )}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground flex items-center gap-1" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', letterSpacing: '-0.01em', fontWeight: 300 }}>
-                          <Clock className="h-3 w-3" />
-                          {trace.timestamp}
+              // Use a different visual for hover traces
+              const isHover = trace.type === 'hover';
+              if (isHover) {
+                // Only show icon and text for hover traces
+                const durationSec = trace.duration ? (trace.duration / 1000).toFixed(1) : '';
+                // Use gestureType for label, fallback to 'meandered'
+                const gestureLabel = trace.gestureType ? trace.gestureType.replace(/^hover-/, '') : 'meandered';
+                return (
+                  <div 
+                    key={trace.id} 
+                    data-trace-container
+                    style={{ 
+                      marginBottom: index < traces.length - 1 ? gapHeight : 0,
+                      animationDelay
+                    }}
+                  >
+                    <Card 
+                      className={"p-4 transition-all animate-slide-in hover-trace-card"}
+                      style={{
+                        animationDelay,
+                        height: '100%',
+                        background: 'transparent',
+                        boxShadow: 'none',
+                        border: 'none',
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex items-center justify-center">
+                          {getToolIcon('hover')}
+                        </span>
+                        <span className="text-sm text-muted-foreground" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', letterSpacing: '-0.01em', fontWeight: 400 }}>
+                          {gestureLabel.charAt(0).toUpperCase() + gestureLabel.slice(1)} for {durationSec} seconds
                         </span>
                       </div>
-                      <p className="text-xs mt-1 text-muted-foreground" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', letterSpacing: '-0.01em', fontWeight: 300 }}>
-                        {trace.type === 'freehand' 
-                          ? formatFreehandTrace(trace.coordinates)
-                          : trace.type === 'hover'
-                            ? null
-                            : trace.coordinates}
-                      </p>
-                      {trace.gestureType && (
-                        <Badge variant="secondary" className="ml-2 text-xs lowercase" style={{ fontWeight: 400 }}>
-                          {trace.gestureType}
-                        </Badge>
-                      )}
-                    </div>
+                    </Card>
                   </div>
-                </Card>
-              </div>
-            );
-          })}
+                );
+              }
+              return (
+                <div 
+                  key={trace.id} 
+                  data-trace-container
+                  style={{ 
+                    marginBottom: index < traces.length - 1 ? gapHeight : 0,
+                    animationDelay
+                  }}
+                >
+                  <Card 
+                    className={`p-4 transition-all hover:translate-y-[-2px] hover:shadow-md animate-slide-in${isHover ? ' hover-trace-card' : ''}`}
+                    style={{
+                      animationDelay,
+                      height: '100%',
+                      ...(isHover ? {
+                        background: 'transparent',
+                        boxShadow: 'none',
+                        border: 'none',
+                      } : {})
+                    }}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className="bg-muted p-1.5 rounded">
+                        {getToolIcon(trace.type)}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <Badge variant="outline" className="text-xs" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', letterSpacing: '-0.01em', fontWeight: 400 }}>
+                            {trace.type.charAt(0).toUpperCase() + trace.type.slice(1)}
+                            {trace.groupId && (
+                              <span className="ml-1 text-muted-foreground" style={{ fontWeight: 300 }}>
+                                #{getShortGroupId(trace.groupId)}
+                              </span>
+                            )}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground flex items-center gap-1" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', letterSpacing: '-0.01em', fontWeight: 300 }}>
+                            <Clock className="h-3 w-3" />
+                            {trace.timestamp}
+                          </span>
+                        </div>
+                        <p className="text-xs mt-1 text-muted-foreground" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', letterSpacing: '-0.01em', fontWeight: 300 }}>
+                          {trace.type === 'freehand' 
+                            ? formatFreehandTrace(trace.coordinates)
+                            : trace.type === 'hover'
+                              ? null
+                              : trace.coordinates}
+                        </p>
+                        {trace.gestureType && (
+                          <Badge variant="secondary" className="ml-2 text-xs lowercase" style={{ fontWeight: 400 }}>
+                            {trace.gestureType}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              );
+            })}
         </div>
       </ScrollArea>
 
