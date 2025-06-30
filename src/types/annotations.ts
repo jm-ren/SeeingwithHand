@@ -28,6 +28,12 @@ export interface Annotation {
   timestamp: number;
   selected?: boolean;
   groupIds?: string[];
+  // --- V2 gesture classification metadata ---
+  gestureType?: string;
+  duration?: number;
+  length?: number;
+  boundingBox?: number;
+  directionChanges?: number;
 }
 
 // Represents a group of annotations

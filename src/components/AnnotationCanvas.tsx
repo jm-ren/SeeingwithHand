@@ -68,6 +68,20 @@ const AnnotationCanvas = ({
   const [previousTool, setPreviousTool] = useState<Tool | null>(null);
   const [isShiftKeyDown, setIsShiftKeyDown] = useState(false);
   
+  // --- V2 Tracing State ---
+  const [pointerDown, setPointerDown] = useState(false);
+  const [pointerStart, setPointerStart] = useState<{ point: Point; time: number } | null>(null);
+  const [currentTrace, setCurrentTrace] = useState<Point[]>([]);
+  const [traceType, setTraceType] = useState<"none" | "point" | "freehand" | "hover">("none");
+  const [hoverTrace, setHoverTrace] = useState<Point[]>([]);
+  const dwellTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [dwellRadius, setDwellRadius] = useState(5); // For growing point
+
+  // --- V2 Tracing Parameters ---
+  const DWELL_TIME = 400; // ms to trigger dwell/point
+  const MOVE_THRESHOLD = 8; // px to switch to freehand
+  const HOVER_FADE_TIME = 1200; // ms for hover trace to fade
+
   // Initialize and load image
   useEffect(() => {
     const image = new Image();
@@ -528,16 +542,51 @@ const AnnotationCanvas = ({
     }
   }, [annotations, currentAnnotation, groups, selectedTool, isCreatingPolygon, tempMousePos, isDrawing, selectedAnnotations]);
 
+  // --- V2 Drawing Logic ---
+  const drawV2Trace = useCallback((ctx: CanvasRenderingContext2D) => {
+    // Draw growing point (dwell)
+    if (traceType === "point" && currentTrace.length > 0) {
+      ctx.beginPath();
+      ctx.arc(currentTrace[0].x, currentTrace[0].y, dwellRadius, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(221, 70, 39, 0.8)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = "rgba(221, 70, 39, 0.15)";
+      ctx.fill();
+    }
+    // Draw freehand path as you draw
+    if (traceType === "freehand" && currentTrace.length > 1) {
+      ctx.beginPath();
+      ctx.moveTo(currentTrace[0].x, currentTrace[0].y);
+      for (let i = 1; i < currentTrace.length; i++) {
+        ctx.lineTo(currentTrace[i].x, currentTrace[i].y);
+      }
+      ctx.strokeStyle = "rgba(221, 70, 39, 0.8)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    // Draw hover trace (faint, fading)
+    if (hoverTrace.length > 1) {
+      ctx.save();
+      ctx.globalAlpha = 0.18;
+      ctx.beginPath();
+      ctx.moveTo(hoverTrace[0].x, hoverTrace[0].y);
+      for (let i = 1; i < hoverTrace.length; i++) {
+        ctx.lineTo(hoverTrace[i].x, hoverTrace[i].y);
+      }
+      ctx.strokeStyle = "#222";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+    }
+  }, [traceType, currentTrace, dwellRadius, hoverTrace]);
+
+  // Patch drawCanvas to call drawV2Trace
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
-    
     if (!canvas || !ctx || !imageRef.current || !imageScaling) return;
-    
-    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw image
     ctx.drawImage(
       imageRef.current,
       imageScaling.x,
@@ -545,10 +594,14 @@ const AnnotationCanvas = ({
       imageScaling.width,
       imageScaling.height,
     );
-    
-    // Draw annotations
-    drawAnnotations(ctx);
-  }, [drawAnnotations, imageScaling]);
+    drawAnnotations(ctx); // Draw legacy/committed annotations
+    drawV2Trace(ctx);     // Draw V2 live trace/hover
+  }, [drawAnnotations, imageScaling, drawV2Trace]);
+
+  // Redraw on V2 tracing state changes
+  useEffect(() => {
+    drawCanvas();
+  }, [drawCanvas, dwellRadius, currentTrace, hoverTrace, traceType]);
 
   // Update canvas when annotations change
   useEffect(() => {
@@ -715,6 +768,126 @@ const AnnotationCanvas = ({
       window.removeEventListener('keyup', handleKeyUp);
     };
   }, [isCreatingPolygon, handleCreateGroup, selectedCount, isShiftKeyDown, selectedTool, previousTool, onToolChange, deselectAll]);
+
+  // --- V2 Pointer Event Handlers ---
+  const handlePointerDownV2 = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!imageScaling) return;
+    const rect = canvasRef.current!.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    if (
+      x < imageScaling.x ||
+      y < imageScaling.y ||
+      x > imageScaling.x + imageScaling.width ||
+      y > imageScaling.y + imageScaling.height
+    ) {
+      return;
+    }
+    const now = Date.now();
+    setPointerDown(true);
+    setPointerStart({ point: { x, y }, time: now });
+    setCurrentTrace([{ x, y }]);
+    setTraceType("point");
+    setDwellRadius(5);
+    // Start dwell timer
+    dwellTimerRef.current = setInterval(() => {
+      setDwellRadius((r) => Math.min(r + 1, 30));
+    }, 30);
+  }, [imageScaling]);
+
+  const handlePointerMoveV2 = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    if (pointerDown && pointerStart) {
+      const dx = x - pointerStart.point.x;
+      const dy = y - pointerStart.point.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (traceType === "point" && dist > MOVE_THRESHOLD) {
+        // Switch to freehand
+        setTraceType("freehand");
+        if (dwellTimerRef.current) clearInterval(dwellTimerRef.current);
+      }
+      setCurrentTrace((prev) => [...prev, { x, y }]);
+    } else if (!pointerDown) {
+      // Hover trace
+      setHoverTrace((prev) => [...prev, { x, y }]);
+      // Start fade timer
+      setTimeout(() => setHoverTrace([]), HOVER_FADE_TIME);
+    }
+  }, [pointerDown, pointerStart, traceType]);
+
+  const handlePointerUpV2 = useCallback(() => {
+    if (!pointerDown) return;
+    if (dwellTimerRef.current) clearInterval(dwellTimerRef.current);
+    if (traceType === "point" && currentTrace.length > 0) {
+      // Classify as dwell or tap
+      const duration = Date.now() - (pointerStart?.time || 0);
+      const gesture = duration > DWELL_TIME ? "dwell" : "tap";
+      // Add annotation as point
+      addAnnotation({
+        type: "point",
+        points: [currentTrace[0]],
+        color: "black",
+        selected: false,
+        gestureType: gesture,
+        duration,
+      });
+    } else if (traceType === "freehand" && currentTrace.length > 1) {
+      // Classify freehand gesture
+      const gesture = classifyFreehandGesture(currentTrace, pointerStart?.time || 0);
+      addAnnotation({
+        type: "freehand",
+        points: currentTrace,
+        color: "black",
+        selected: false,
+        gestureType: gesture.type,
+        ...gesture.metrics,
+      });
+    }
+    setPointerDown(false);
+    setPointerStart(null);
+    setCurrentTrace([]);
+    setTraceType("none");
+    setDwellRadius(5);
+  }, [pointerDown, traceType, currentTrace, pointerStart, addAnnotation]);
+
+  const handlePointerLeaveV2 = useCallback(() => {
+    if (pointerDown) handlePointerUpV2();
+    setHoverTrace([]);
+  }, [pointerDown, handlePointerUpV2]);
+
+  // --- Gesture Classification Helper ---
+  function classifyFreehandGesture(trace: Point[], startTime: number) {
+    // Calculate metrics: duration, speed, bounding box, straightness, direction changes
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    let length = 0;
+    let directionChanges = 0;
+    let prevAngle = null;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (let i = 1; i < trace.length; i++) {
+      const dx = trace[i].x - trace[i - 1].x;
+      const dy = trace[i].y - trace[i - 1].y;
+      length += Math.sqrt(dx * dx + dy * dy);
+      minX = Math.min(minX, trace[i].x);
+      minY = Math.min(minY, trace[i].y);
+      maxX = Math.max(maxX, trace[i].x);
+      maxY = Math.max(maxY, trace[i].y);
+      const angle = Math.atan2(dy, dx);
+      if (prevAngle !== null && Math.abs(angle - prevAngle) > 0.5) directionChanges++;
+      prevAngle = angle;
+    }
+    const boundingBox = Math.max(maxX - minX, maxY - minY);
+    const straightness = length / (Math.sqrt(Math.pow(trace[trace.length - 1].x - trace[0].x, 2) + Math.pow(trace[trace.length - 1].y - trace[0].y, 2)) || 1);
+    const avgSpeed = length / (duration || 1);
+    // Heuristic classification
+    if (straightness < 1.2 && avgSpeed > 0.5) return { type: "scan", metrics: { duration, length, boundingBox, directionChanges } };
+    if (directionChanges > 10 && boundingBox < 40) return { type: "scribble", metrics: { duration, length, boundingBox, directionChanges } };
+    if (boundingBox > 100 && directionChanges > 5) return { type: "explore", metrics: { duration, length, boundingBox, directionChanges } };
+    if (directionChanges > 3) return { type: "meander", metrics: { duration, length, boundingBox, directionChanges } };
+    return { type: "freehand", metrics: { duration, length, boundingBox, directionChanges } };
+  }
 
   // Handle mouse events - make selection use multi-select when shift is held
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -1102,6 +1275,10 @@ const AnnotationCanvas = ({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
         onDoubleClick={handleDoubleClick}
+        onPointerDown={handlePointerDownV2}
+        onPointerMove={handlePointerMoveV2}
+        onPointerUp={handlePointerUpV2}
+        onPointerLeave={handlePointerLeaveV2}
       />
       
       {/* Undo button */}
