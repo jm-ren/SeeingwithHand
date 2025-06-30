@@ -85,6 +85,37 @@ const AnnotationCanvas = ({
   // --- Hover Trace Finalization ---
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // --- V2 Drawing Logic ---
+  const [hoverFadeAlpha, setHoverFadeAlpha] = useState(0.18); // Initial alpha for hover trace
+  const [isHoverFading, setIsHoverFading] = useState(false);
+
+  // On inactivity, start fading instead of clearing immediately
+  const handleHoverInactivity = useCallback(() => {
+    setIsHoverFading(true);
+  }, []);
+
+  // Animate hover trace fading
+  useEffect(() => {
+    if (hoverTrace.length > 1 && !isHoverFading) {
+      setHoverFadeAlpha(0.18); // Reset alpha when new hover trace starts
+      return;
+    }
+    if (isHoverFading && hoverTrace.length > 1) {
+      let fade = hoverFadeAlpha;
+      const fadeStep = 0.02;
+      const fadeInterval = setInterval(() => {
+        fade -= fadeStep;
+        setHoverFadeAlpha(Math.max(0, fade));
+        if (fade <= 0) {
+          clearInterval(fadeInterval);
+          setIsHoverFading(false);
+          setHoverTrace([]);
+        }
+      }, 16); // ~60fps
+      return () => clearInterval(fadeInterval);
+    }
+  }, [hoverTrace, isHoverFading]);
+
   // Helper to finalize and store a hover trace
   const finalizeHoverTrace = useCallback(() => {
     if (hoverTrace.length > 5) { // Only store meaningful traces
@@ -585,10 +616,10 @@ const AnnotationCanvas = ({
       ctx.lineWidth = 2;
       ctx.stroke();
     }
-    // Draw hover trace (faint, fading)
-    if (hoverTrace.length > 1) {
+    // Draw hover trace (faint, beautifully fading)
+    if (hoverTrace.length > 1 && hoverFadeAlpha > 0) {
       ctx.save();
-      ctx.globalAlpha = 0.18;
+      ctx.globalAlpha = hoverFadeAlpha;
       ctx.beginPath();
       ctx.moveTo(hoverTrace[0].x, hoverTrace[0].y);
       for (let i = 1; i < hoverTrace.length; i++) {
@@ -596,10 +627,12 @@ const AnnotationCanvas = ({
       }
       ctx.strokeStyle = "#222";
       ctx.lineWidth = 2;
+      ctx.shadowColor = "#222";
+      ctx.shadowBlur = 6;
       ctx.stroke();
       ctx.restore();
     }
-  }, [traceType, currentTrace, dwellRadius, hoverTrace]);
+  }, [traceType, currentTrace, dwellRadius, hoverTrace, hoverFadeAlpha]);
 
   // Patch drawCanvas to call drawV2Trace
   const drawCanvas = useCallback(() => {
@@ -793,6 +826,8 @@ const AnnotationCanvas = ({
   const handlePointerDownV2 = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     finalizeHoverTrace();
+    setIsHoverFading(false);
+    setHoverFadeAlpha(0.18);
     if (!imageScaling) return;
     const rect = canvasRef.current!.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -831,13 +866,16 @@ const AnnotationCanvas = ({
       setCurrentTrace((prev) => [...prev, { x, y }]);
     } else if (!pointerDown) {
       setHoverTrace((prev) => [...prev, { x, y }]);
+      setIsHoverFading(false);
+      setHoverFadeAlpha(0.18);
       // Reset hover inactivity timer
       if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = setTimeout(() => {
         finalizeHoverTrace();
+        handleHoverInactivity();
       }, HOVER_FADE_TIME);
     }
-  }, [pointerDown, pointerStart, traceType, finalizeHoverTrace]);
+  }, [pointerDown, pointerStart, traceType, finalizeHoverTrace, handleHoverInactivity]);
 
   const handlePointerUpV2 = useCallback(() => {
     if (!pointerDown) return;
@@ -878,6 +916,8 @@ const AnnotationCanvas = ({
     if (pointerDown) handlePointerUpV2();
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     finalizeHoverTrace();
+    setIsHoverFading(false);
+    setHoverFadeAlpha(0.18);
     setHoverTrace([]);
   }, [pointerDown, handlePointerUpV2, finalizeHoverTrace]);
 
