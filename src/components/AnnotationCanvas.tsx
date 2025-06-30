@@ -89,7 +89,7 @@ const AnnotationCanvas = ({
   const finalizeHoverTrace = useCallback(() => {
     if (hoverTrace.length > 5) { // Only store meaningful traces
       const startTime = Date.now() - hoverTrace.length * 16; // Approximate duration
-      const gesture = classifyFreehandGesture(hoverTrace, startTime);
+      const gesture = classifyFreehandGesture(hoverTrace, startTime, true);
       addAnnotation({
         type: "hover",
         points: hoverTrace,
@@ -857,7 +857,7 @@ const AnnotationCanvas = ({
       });
     } else if (traceType === "freehand" && currentTrace.length > 1) {
       // Classify freehand gesture
-      const gesture = classifyFreehandGesture(currentTrace, pointerStart?.time || 0);
+      const gesture = classifyFreehandGesture(currentTrace, pointerStart?.time || 0, false);
       addAnnotation({
         type: "freehand",
         points: currentTrace,
@@ -882,7 +882,7 @@ const AnnotationCanvas = ({
   }, [pointerDown, handlePointerUpV2, finalizeHoverTrace]);
 
   // --- Gesture Classification Helper ---
-  function classifyFreehandGesture(trace: Point[], startTime: number) {
+  function classifyFreehandGesture(trace: Point[], startTime: number, isHover = false) {
     // Calculate metrics: duration, speed, bounding box, straightness, direction changes
     const endTime = Date.now();
     const duration = endTime - startTime;
@@ -905,12 +905,36 @@ const AnnotationCanvas = ({
     const boundingBox = Math.max(maxX - minX, maxY - minY);
     const straightness = length / (Math.sqrt(Math.pow(trace[trace.length - 1].x - trace[0].x, 2) + Math.pow(trace[trace.length - 1].y - trace[0].y, 2)) || 1);
     const avgSpeed = length / (duration || 1);
-    // Heuristic classification
+
+    // --- Freehand gesture classification ---
+    if (!isHover) {
+      // Framing: forms a moderate closed shape (polygon-like, moderate area, moderate direction changes)
+      if (trace.length > 10 && boundingBox > 40 && boundingBox < 200 && directionChanges > 5 && straightness < 2) {
+        return { type: "framing", metrics: { duration, length, boundingBox, directionChanges } };
+      }
+      // Focal point: tight, dense, many direction changes, small area
+      if (boundingBox < 40 && directionChanges > 8) {
+        return { type: "focal point", metrics: { duration, length, boundingBox, directionChanges } };
+      }
+      // Area: large, complex, covers a big region
+      if (boundingBox >= 200 && directionChanges > 5) {
+        return { type: "area", metrics: { duration, length, boundingBox, directionChanges } };
+      }
+      // Curve: smooth, not many direction changes, moderate area
+      if (directionChanges <= 5 && boundingBox > 40 && straightness < 2.5) {
+        return { type: "curve", metrics: { duration, length, boundingBox, directionChanges } };
+      }
+      // Fallback: unclassified
+      return { type: "unclassified", metrics: { duration, length, boundingBox, directionChanges } };
+    }
+
+    // --- Hover gesture classification ---
+    // Use existing logic, but fallback to 'meander'
     if (straightness < 1.2 && avgSpeed > 0.5) return { type: "scan", metrics: { duration, length, boundingBox, directionChanges } };
     if (directionChanges > 10 && boundingBox < 40) return { type: "scribble", metrics: { duration, length, boundingBox, directionChanges } };
     if (boundingBox > 100 && directionChanges > 5) return { type: "explore", metrics: { duration, length, boundingBox, directionChanges } };
     if (directionChanges > 3) return { type: "meander", metrics: { duration, length, boundingBox, directionChanges } };
-    return { type: "freehand", metrics: { duration, length, boundingBox, directionChanges } };
+    return { type: "meander", metrics: { duration, length, boundingBox, directionChanges } };
   }
 
   // Handle undo
