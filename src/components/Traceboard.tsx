@@ -13,6 +13,7 @@ interface TraceItem {
   coordinates: string;
   groupId?: string;
   numericTimestamp?: number;
+  gestureType?: string;
 }
 
 interface TraceboardProps {
@@ -92,7 +93,8 @@ const Traceboard = ({
         .map((p) => `(${Math.round(p.x)},${Math.round(p.y)})`)
         .join(", "),
       groupId: annotation.groupIds?.[0],
-      numericTimestamp: annotation.timestamp
+      numericTimestamp: annotation.timestamp,
+      gestureType: annotation.gestureType || undefined,
     }));
 
     const groupTraces = annotations
@@ -383,6 +385,11 @@ const Traceboard = ({
                           ? formatFreehandTrace(trace.coordinates)
                           : trace.coordinates}
                       </p>
+                      {trace.gestureType && (
+                        <Badge variant="secondary" className="ml-2 text-xs lowercase" style={{ fontWeight: 400 }}>
+                          {trace.gestureType}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </Card>
