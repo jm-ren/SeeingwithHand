@@ -9,7 +9,7 @@ import { useAnnotations } from "../context/AnnotationContext";
 interface TraceItem {
   id: string;
   timestamp: string;
-  type: "point" | "line" | "frame" | "area" | "freehand" | "group" | "select";
+  type: "point" | "line" | "frame" | "area" | "freehand" | "group" | "select" | "hover";
   coordinates: string;
   groupId?: string;
   numericTimestamp?: number;
@@ -57,6 +57,8 @@ const getToolIcon = (type: TraceItem["type"]) => {
       return <div className="h-4 w-4 border border-current rounded-sm p-0.5 flex items-center justify-center">
         <div className="w-full h-full bg-primary-foreground rounded-sm"></div>
       </div>;
+    case "hover":
+      return <Pencil className="h-4 w-4" />;
     default:
       return <Pencil className="h-4 w-4" />;
   }
@@ -383,7 +385,9 @@ const Traceboard = ({
                       <p className="text-xs mt-1 text-muted-foreground" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', letterSpacing: '-0.01em', fontWeight: 300 }}>
                         {trace.type === 'freehand' 
                           ? formatFreehandTrace(trace.coordinates)
-                          : trace.coordinates}
+                          : trace.type === 'hover'
+                            ? null
+                            : trace.coordinates}
                       </p>
                       {trace.gestureType && (
                         <Badge variant="secondary" className="ml-2 text-xs lowercase" style={{ fontWeight: 400 }}>
