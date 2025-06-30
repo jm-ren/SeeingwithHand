@@ -10,6 +10,7 @@ export type Tool =
   | "frame"
   | "area"
   | "freehand"
+  | "hover"
   | "select"
   | "group";
 

@@ -82,6 +82,26 @@ const AnnotationCanvas = ({
   const MOVE_THRESHOLD = 8; // px to switch to freehand
   const HOVER_FADE_TIME = 1200; // ms for hover trace to fade
 
+  // --- Hover Trace Finalization ---
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Helper to finalize and store a hover trace
+  const finalizeHoverTrace = useCallback(() => {
+    if (hoverTrace.length > 5) { // Only store meaningful traces
+      const startTime = Date.now() - hoverTrace.length * 16; // Approximate duration
+      const gesture = classifyFreehandGesture(hoverTrace, startTime);
+      addAnnotation({
+        type: "hover",
+        points: hoverTrace,
+        color: "black",
+        selected: false,
+        gestureType: `hover-${gesture.type}`,
+        ...gesture.metrics,
+      });
+    }
+    setHoverTrace([]);
+  }, [hoverTrace, addAnnotation]);
+
   // Initialize and load image
   useEffect(() => {
     const image = new Image();
@@ -771,6 +791,8 @@ const AnnotationCanvas = ({
 
   // --- V2 Pointer Event Handlers ---
   const handlePointerDownV2 = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    finalizeHoverTrace();
     if (!imageScaling) return;
     const rect = canvasRef.current!.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -789,11 +811,10 @@ const AnnotationCanvas = ({
     setCurrentTrace([{ x, y }]);
     setTraceType("point");
     setDwellRadius(5);
-    // Start dwell timer
     dwellTimerRef.current = setInterval(() => {
       setDwellRadius((r) => Math.min(r + 1, 30));
     }, 30);
-  }, [imageScaling]);
+  }, [imageScaling, finalizeHoverTrace]);
 
   const handlePointerMoveV2 = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect();
@@ -804,18 +825,19 @@ const AnnotationCanvas = ({
       const dy = y - pointerStart.point.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (traceType === "point" && dist > MOVE_THRESHOLD) {
-        // Switch to freehand
         setTraceType("freehand");
         if (dwellTimerRef.current) clearInterval(dwellTimerRef.current);
       }
       setCurrentTrace((prev) => [...prev, { x, y }]);
     } else if (!pointerDown) {
-      // Hover trace
       setHoverTrace((prev) => [...prev, { x, y }]);
-      // Start fade timer
-      setTimeout(() => setHoverTrace([]), HOVER_FADE_TIME);
+      // Reset hover inactivity timer
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = setTimeout(() => {
+        finalizeHoverTrace();
+      }, HOVER_FADE_TIME);
     }
-  }, [pointerDown, pointerStart, traceType]);
+  }, [pointerDown, pointerStart, traceType, finalizeHoverTrace]);
 
   const handlePointerUpV2 = useCallback(() => {
     if (!pointerDown) return;
@@ -854,8 +876,10 @@ const AnnotationCanvas = ({
 
   const handlePointerLeaveV2 = useCallback(() => {
     if (pointerDown) handlePointerUpV2();
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    finalizeHoverTrace();
     setHoverTrace([]);
-  }, [pointerDown, handlePointerUpV2]);
+  }, [pointerDown, handlePointerUpV2, finalizeHoverTrace]);
 
   // --- Gesture Classification Helper ---
   function classifyFreehandGesture(trace: Point[], startTime: number) {
