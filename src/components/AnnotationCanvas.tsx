@@ -824,6 +824,7 @@ const AnnotationCanvas = ({
 
   // --- V2 Pointer Event Handlers ---
   const handlePointerDownV2 = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     finalizeHoverTrace();
     setIsHoverFading(false);
@@ -852,6 +853,7 @@ const AnnotationCanvas = ({
   }, [imageScaling, finalizeHoverTrace]);
 
   const handlePointerMoveV2 = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
     const rect = canvasRef.current!.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -877,7 +879,8 @@ const AnnotationCanvas = ({
     }
   }, [pointerDown, pointerStart, traceType, finalizeHoverTrace, handleHoverInactivity]);
 
-  const handlePointerUpV2 = useCallback(() => {
+  const handlePointerUpV2 = useCallback((e?: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e) e.preventDefault();
     if (!pointerDown) return;
     if (dwellTimerRef.current) clearInterval(dwellTimerRef.current);
     if (traceType === "point" && currentTrace.length > 0) {
@@ -912,7 +915,8 @@ const AnnotationCanvas = ({
     setDwellRadius(5);
   }, [pointerDown, traceType, currentTrace, pointerStart, addAnnotation]);
 
-  const handlePointerLeaveV2 = useCallback(() => {
+  const handlePointerLeaveV2 = useCallback((e?: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e) e.preventDefault();
     if (pointerDown) handlePointerUpV2();
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     finalizeHoverTrace();
@@ -1041,6 +1045,7 @@ const AnnotationCanvas = ({
       <canvas
         ref={canvasRef}
         className="absolute top-0 left-0 w-full h-full"
+        style={{ touchAction: "none" }}
         onPointerDown={handlePointerDownV2}
         onPointerMove={handlePointerMoveV2}
         onPointerUp={handlePointerUpV2}
