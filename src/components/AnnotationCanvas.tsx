@@ -1045,11 +1045,14 @@ const AnnotationCanvas = ({
       <canvas
         ref={canvasRef}
         className="absolute top-0 left-0 w-full h-full"
-        style={{ touchAction: "none" }}
+        style={{ touchAction: "none", userSelect: "none" }}
         onPointerDown={handlePointerDownV2}
         onPointerMove={handlePointerMoveV2}
         onPointerUp={handlePointerUpV2}
         onPointerLeave={handlePointerLeaveV2}
+        onCopy={e => e.preventDefault()}
+        onCut={e => e.preventDefault()}
+        onPaste={e => e.preventDefault()}
       />
       
       {/* Undo button */}
