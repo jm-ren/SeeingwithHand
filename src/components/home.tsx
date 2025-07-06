@@ -7,6 +7,7 @@ import { useSession } from "../context/SessionContext";
 import { useAnnotations } from "../context/AnnotationContext";
 import { Annotation } from "../types/annotations";
 import { processTracesForDisplay } from "../lib/utils";
+import { useAudioRecorder } from '../hooks/useAudioRecorder';
 
 type Tool =
   | "point"
@@ -43,6 +44,8 @@ interface HomeProps {
   sessionId?: string;
 }
 
+const sessionNameCounter: Record<string, number> = {};
+
 const Home: React.FC<HomeProps> = ({ imageId, sessionId }) => {
   // State management
   const [selectedTool, setSelectedTool] = useState<Tool>("point");
@@ -53,6 +56,34 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId }) => {
   // Use contexts - get countdown and session state from context
   const { isSessionActive, countdown, showCountdown } = useSession();
   const { resetSession, annotations } = useAnnotations();
+  const audio = useAudioRecorder();
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [currentSessionName, setCurrentSessionName] = useState<string | null>(null);
+
+  // Automatically stop audio when session ends
+  useEffect(() => {
+    if (!isSessionActive && audio.isRecording) {
+      audio.stop();
+    }
+  }, [isSessionActive, audio]);
+
+  // Generate session name/id on session start
+  useEffect(() => {
+    if (isSessionActive && !currentSessionId && imageId) {
+      // Increment local counter for this image
+      if (!sessionNameCounter[imageId]) sessionNameCounter[imageId] = 1;
+      else sessionNameCounter[imageId]++;
+      const sessionNum = sessionNameCounter[imageId];
+      const sessionName = `session ${String(sessionNum).padStart(4, '0')}`;
+      const sessionIdGenerated = `${imageId}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+      setCurrentSessionName(sessionName);
+      setCurrentSessionId(sessionIdGenerated);
+    }
+    if (!isSessionActive) {
+      setCurrentSessionId(null);
+      setCurrentSessionName(null);
+    }
+  }, [isSessionActive, imageId, currentSessionId]);
 
   // Determine image URL based on imageId
   const imageUrl = imageId && imageMap[imageId]
@@ -266,6 +297,36 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId }) => {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden" style={{ background: '#FBFAF8' }}>
+      {/* Audio Recording Controls */}
+      <div style={{ position: 'absolute', top: 24, right: 32, zIndex: 100 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {audio.isRecording && (
+            <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#DD4627', display: 'inline-block', marginRight: 8, boxShadow: '0 0 8px #DD4627' }} />
+          )}
+          {!audio.isRecording && (
+            <button onClick={audio.start} style={{ padding: '8px 18px', background: '#DD4627', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Start Recording</button>
+          )}
+          {audio.isRecording && !audio.isPaused && (
+            <button onClick={audio.pause} style={{ padding: '8px 18px', background: '#EAB22B', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Pause</button>
+          )}
+          {audio.isRecording && audio.isPaused && (
+            <button onClick={audio.resume} style={{ padding: '8px 18px', background: '#889DF0', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Resume</button>
+          )}
+          {audio.isRecording && (
+            <button onClick={audio.stop} style={{ padding: '8px 18px', background: '#222', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Stop</button>
+          )}
+        </div>
+        {audio.audioUrl && (
+          <div style={{ marginTop: 10 }}>
+            <audio controls src={audio.audioUrl} />
+          </div>
+        )}
+        {currentSessionName && (
+          <div style={{ marginTop: 10, fontWeight: 600, color: '#222' }}>
+            Session: {currentSessionName}
+          </div>
+        )}
+      </div>
       {/* Main Content Area with Absolute Positioned Toolbox */}
       <div className="flex-1 flex flex-col relative">
         {/* Toolbox Panel - Absolute Positioned */}
