@@ -40,7 +40,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   const [isSessionActive, setIsSessionActive] = useState<boolean>(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [events, setEvents] = useState<any[]>([]);
-  const [countdown, setCountdown] = useState(10);
+  const [countdown, setCountdown] = useState(3);
   const [showCountdown, setShowCountdown] = useState(true);
 
   const generateSessionId = () => {

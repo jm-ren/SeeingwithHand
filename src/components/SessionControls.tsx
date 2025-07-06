@@ -19,6 +19,7 @@ import { useSession } from "../context/SessionContext";
 import { useAnnotations } from "../context/AnnotationContext";
 import EyeVisualization from "./EyeVisualization";
 import Legend from "./Legend";
+import { useAudioRecorder } from '../hooks/useAudioRecorder';
 
 interface SessionControlsProps {
   onTransform?: () => void;
@@ -26,6 +27,9 @@ interface SessionControlsProps {
   disabled?: boolean;
   countdown?: number;
   showCountdown?: boolean;
+  onSessionEnd?: (summary: { sessionName: string; imageUrl: string; audioUrl?: string }) => void;
+  sessionName?: string;
+  imageUrl?: string;
 }
 
 const baseSpeedMultiplier = 16;
@@ -37,6 +41,9 @@ const SessionControls = ({
   disabled = false,
   countdown = 0,
   showCountdown = false,
+  onSessionEnd,
+  sessionName,
+  imageUrl,
 }: SessionControlsProps) => {
   const [showVisualization, setShowVisualization] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -44,6 +51,7 @@ const SessionControls = ({
   const [speedIndex, setSpeedIndex] = useState(0); // Start at index 0 (1x relative, which is 16x absolute)
   const { isSessionActive, startSession, endSession } = useSession();
   const { annotations } = useAnnotations();
+  const audio = useAudioRecorder();
 
   const relativeSpeed = relativeSpeeds[speedIndex];
   const currentAbsoluteSpeed = relativeSpeed * baseSpeedMultiplier;
@@ -51,6 +59,17 @@ const SessionControls = ({
   const handleStartStop = () => {
     if (isSessionActive) {
       endSession();
+      if (audio.isRecording) audio.stop();
+      console.log('[SessionControls] Attempting to call onSessionEnd:', { sessionName, imageUrl, audioUrl: audio.audioUrl });
+      if (onSessionEnd && sessionName && imageUrl) {
+        onSessionEnd({
+          sessionName,
+          imageUrl,
+          audioUrl: audio.audioUrl || undefined,
+        });
+      } else {
+        console.warn('[SessionControls] onSessionEnd not called. Missing:', { onSessionEnd, sessionName, imageUrl });
+      }
     } else {
       startSession();
     }

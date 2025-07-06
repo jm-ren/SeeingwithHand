@@ -26,10 +26,12 @@ interface Point {
 interface TraceItem {
   id: string;
   timestamp: string;
-  type: "point" | "line" | "frame" | "area" | "freehand" | "group" | "select";
+  type: "point" | "line" | "frame" | "area" | "freehand" | "group" | "select" | "hover";
   coordinates: string;
   groupId?: string;
   numericTimestamp?: number;
+  gestureType?: string;
+  duration?: number;
 }
 
 // Map imageId to image file path
@@ -65,21 +67,7 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
   const audio = useAudioRecorder();
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [currentSessionName, setCurrentSessionName] = useState<string | null>(null);
-
-  // Automatically stop audio when session ends and trigger onSessionEnd
-  useEffect(() => {
-    if (!isSessionActive && audio.isRecording) {
-      audio.stop();
-    }
-    // If session just ended, call onSessionEnd
-    if (!isSessionActive && currentSessionName && onSessionEnd) {
-      onSessionEnd({
-        sessionName: currentSessionName,
-        imageUrl,
-        audioUrl: audio.audioUrl || undefined,
-      });
-    }
-  }, [isSessionActive, audio, currentSessionName, onSessionEnd, imageUrl]);
+  const [waitingForAudio, setWaitingForAudio] = useState(false);
 
   // Generate session name/id on session start
   useEffect(() => {
@@ -151,7 +139,7 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
             groupTraces.push({
               id: `group-${groupId}`,
               timestamp: new Date(groupTimestamp).toLocaleTimeString(),
-              type: "group",
+              type: "group" as const,
               coordinates: "Group created",
               groupId: groupId,
               numericTimestamp: groupTimestamp
@@ -313,7 +301,7 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
             <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#DD4627', display: 'inline-block', marginRight: 8, boxShadow: '0 0 8px #DD4627' }} />
           )}
           {!audio.isRecording && (
-            <button onClick={audio.start} style={{ padding: '8px 18px', background: '#DD4627', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Start Recording</button>
+            <button onClick={audio.start} style={{ padding: '8px 18px', background: '#DD4627', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Turn on audio recording</button>
           )}
           {audio.isRecording && !audio.isPaused && (
             <button onClick={audio.pause} style={{ padding: '8px 18px', background: '#EAB22B', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Pause</button>
@@ -362,6 +350,9 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
           showCountdown={showCountdown}
           onTransform={handleTransform}
           disabled={false}
+          onSessionEnd={onSessionEnd}
+          sessionName={currentSessionName}
+          imageUrl={imageUrl}
         />
       </div>
       <Traceboard />
