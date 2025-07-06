@@ -1,0 +1,38 @@
+[
+  {
+    "filename": "image 001_villa savoye",
+    "title": "villa savoye",
+    "caption": "Le Corbusier: Villa Savoye in Poissy, France, 1928-1931 | Photo by Fondation Le Corbusier, Courtesy of Phaidon and The Modern House",
+    "uploaded_by": "jiamin",
+    "upload_date": "07-05-2025",
+    "source_url": "https://www.dwell.com/article/dive-into-a-visually-stunning-book-that-celebrates-modernist-architecture-and-its-evolution-ab96e4e4",
+    "display_order": 1
+  },
+  {
+    "filename": "image 002_agnes martin",
+    "title": "agnes martin in new mexico",
+    "caption": "Agnes Martin near her house in Cuba, New Mexico, 1974. Photograph © 2019 Gianfranco Gorgoni | Source: Sotheby's",
+    "uploaded_by": "jiamin",
+    "upload_date": "07-05-2025",
+    "source_url": "https://sothebys-com.brightspotcdn.com/dims4/default/a2e121a/2147483647/strip/true/crop/2000x1326+0+0/resize/1154x765!/format/webp/quality/90/?url=http%3A%2F%2Fsothebys-brightspot.s3.amazonaws.com%2Fdotcom%2Fd3%2F97%2Fa680e339451494c920b665f4173a%2Fagnes-martin-in-new-mexico.jpg",
+    "display_order": 2
+  },
+  {
+    "filename": "image 003_morandi_landscape_cottage",
+    "title": "morandi's cottage",
+    "caption": "Giorgio Morandi Italian, 1890-1964 | Paesaggio, 1960 | Oil on Canvas | h. 25 × 30 cm | Source: ML Fine Art",
+    "uploaded_by": "jiamin",
+    "upload_date": "07-05-2025",
+    "source_url": "https://www.mlfineart.com/artists/50-giorgio-morandi/works/631-giorgio-morandi-paesaggio-1960/",
+    "display_order": 3
+  },
+  {
+    "filename": "image 004_brancusi studio",
+    "title": "brancusi's flower",
+    "caption": "Constantin Brâncuși Romanian, 1876-1957 | Studio View: The Sorceress, Torso of a Young Girl, The Newborn and Mademoiselle Pogany II, c. 1923 | Gelatin silver print, printed c. 1923 | source: Bruce Silverstein Gallery",
+    "uploaded_by": "jiamin",
+    "upload_date": "07-05-2025",
+    "source_url": "https://brucesilverstein.com/exhibitions/28/works/artworks-13147-constantin-brancusi-studio-view-the-sorceress-torso-of-a-young-c.-1923/",
+    "display_order": 4
+  }
+] 
