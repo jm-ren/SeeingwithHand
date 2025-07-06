@@ -1,0 +1,47 @@
+Project: SeeingwithHand - Collaborative Seeing Sessions Tool
+
+---
+
+Vision:
+A web-based platform for documenting, sharing, and reflecting on visual 'seeing sessions' with images. Each session records canvas actions (drawing, mouse, tool changes) and voice narration, stores metadata and user reflection, and enables synchronized replay. Sessions are organized in a gallery and can be shared as standalone pages.
+
+---
+
+Key Features:
+- Gallery of images (with metadata: title, caption, source, uploaded_by, upload_date, display_order)
+- Each image has multiple 'seeing sessions' (variants)
+- Session recording: canvas actions + voice narration (with pause/resume)
+- Session naming: auto-incremented per image (e.g., session 0003)
+- Survey/reflection page after session, input saved as session metadata
+- All data stored in Supabase (canvas, audio, metadata, survey)
+- Synchronized replay (animation + audio)
+- Public sharing: gallery and standalone session pages
+- SVG logo in public/
+
+---
+
+Data Files:
+- Images in public/images/
+- Metadata in public/images/images.json
+- SVG logo in public/
+
+---
+
+UI/UX (per Figma):
+- Left panel: image catalogue, scrollable, shows images and session variants
+- Right panel: empty on load, shows details on hover, locks on click, shows prepare page before session
+- Prepare page: instructions, 'Start Seeing Session' button
+- Drawing tool: records actions and audio
+- Survey page: reflection input, shows playback/visualization
+
+---
+
+Decisions:
+- Use Supabase for all storage
+- Session_id: unique, long; session_name: short, auto-incremented per image
+- Images centered and scaled to fit fixed canvas proportion
+- Modular, independent components
+
+---
+
+To continue work, reference this file for project context and decisions. 

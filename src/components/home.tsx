@@ -31,7 +31,19 @@ interface TraceItem {
   numericTimestamp?: number;
 }
 
-const Home = () => {
+// Map imageId to image file path
+const imageMap: Record<string, string> = {
+  img1: '/images/image 002_agnes martin.png',
+  img2: '/images/image 003_morandi_landscape_cottage.png',
+  // Add more mappings as needed
+};
+
+interface HomeProps {
+  imageId?: string;
+  sessionId?: string;
+}
+
+const Home: React.FC<HomeProps> = ({ imageId, sessionId }) => {
   // State management
   const [selectedTool, setSelectedTool] = useState<Tool>("point");
   const [selectedCount, setSelectedCount] = useState(0);
@@ -41,6 +53,11 @@ const Home = () => {
   // Use contexts - get countdown and session state from context
   const { isSessionActive, countdown, showCountdown } = useSession();
   const { resetSession, annotations } = useAnnotations();
+
+  // Determine image URL based on imageId
+  const imageUrl = imageId && imageMap[imageId]
+    ? imageMap[imageId]
+    : "https://images2.dwell.com/photos/6133553759298379776/6297915443342360576/original.jpg?auto=format&q=35&w=1600";
 
   // Initialize visualization canvas
   useEffect(() => {
@@ -244,9 +261,8 @@ const Home = () => {
       console.error("Error loading image for visualization");
     };
 
-    image.src =
-      "https://images2.dwell.com/photos/6133553759298379776/6297915443342360576/original.jpg?auto=format&q=35&w=1600";
-  }, [annotations, visualizationCanvas]);
+    image.src = imageUrl;
+  }, [annotations, visualizationCanvas, imageUrl]);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden" style={{ background: '#FBFAF8' }}>
@@ -263,6 +279,7 @@ const Home = () => {
 
         <div className="flex-1 overflow-hidden">
           <AnnotationCanvas
+            imageUrl={imageUrl}
             selectedTool={selectedTool}
             onAnnotationChange={handleAnnotationChange}
             onSelectionChange={setSelectedCount}
