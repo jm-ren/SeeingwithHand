@@ -42,11 +42,17 @@ const imageMap: Record<string, string> = {
 interface HomeProps {
   imageId?: string;
   sessionId?: string;
+  onSessionEnd?: (summary: { sessionName: string; imageUrl: string; audioUrl?: string }) => void;
 }
 
 const sessionNameCounter: Record<string, number> = {};
 
-const Home: React.FC<HomeProps> = ({ imageId, sessionId }) => {
+const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
+  // Determine image URL based on imageId
+  const imageUrl = imageId && imageMap[imageId]
+    ? imageMap[imageId]
+    : "https://images2.dwell.com/photos/6133553759298379776/6297915443342360576/original.jpg?auto=format&q=35&w=1600";
+
   // State management
   const [selectedTool, setSelectedTool] = useState<Tool>("point");
   const [selectedCount, setSelectedCount] = useState(0);
@@ -60,12 +66,20 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId }) => {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [currentSessionName, setCurrentSessionName] = useState<string | null>(null);
 
-  // Automatically stop audio when session ends
+  // Automatically stop audio when session ends and trigger onSessionEnd
   useEffect(() => {
     if (!isSessionActive && audio.isRecording) {
       audio.stop();
     }
-  }, [isSessionActive, audio]);
+    // If session just ended, call onSessionEnd
+    if (!isSessionActive && currentSessionName && onSessionEnd) {
+      onSessionEnd({
+        sessionName: currentSessionName,
+        imageUrl,
+        audioUrl: audio.audioUrl || undefined,
+      });
+    }
+  }, [isSessionActive, audio, currentSessionName, onSessionEnd, imageUrl]);
 
   // Generate session name/id on session start
   useEffect(() => {
@@ -84,11 +98,6 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId }) => {
       setCurrentSessionName(null);
     }
   }, [isSessionActive, imageId, currentSessionId]);
-
-  // Determine image URL based on imageId
-  const imageUrl = imageId && imageMap[imageId]
-    ? imageMap[imageId]
-    : "https://images2.dwell.com/photos/6133553759298379776/6297915443342360576/original.jpg?auto=format&q=35&w=1600";
 
   // Initialize visualization canvas
   useEffect(() => {
