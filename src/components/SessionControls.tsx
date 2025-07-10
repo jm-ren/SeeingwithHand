@@ -20,6 +20,7 @@ import { useAnnotations } from "../context/AnnotationContext";
 import EyeVisualization from "./EyeVisualization";
 import Legend from "./Legend";
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
+import { Mic, MicOff } from "lucide-react";
 
 interface SessionControlsProps {
   onTransform?: () => void;
@@ -30,6 +31,7 @@ interface SessionControlsProps {
   onSessionEnd?: (summary: { sessionName: string; imageUrl: string; audioUrl?: string }) => void;
   sessionName?: string;
   imageUrl?: string;
+  audioRecorder?: ReturnType<typeof useAudioRecorder>;
 }
 
 const baseSpeedMultiplier = 16;
@@ -44,6 +46,7 @@ const SessionControls = ({
   onSessionEnd,
   sessionName,
   imageUrl,
+  audioRecorder,
 }: SessionControlsProps) => {
   const [showVisualization, setShowVisualization] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -51,7 +54,7 @@ const SessionControls = ({
   const [speedIndex, setSpeedIndex] = useState(0); // Start at index 0 (1x relative, which is 16x absolute)
   const { isSessionActive, startSession, endSession } = useSession();
   const { annotations } = useAnnotations();
-  const audio = useAudioRecorder();
+  const audio = audioRecorder || useAudioRecorder();
 
   const relativeSpeed = relativeSpeeds[speedIndex];
   const currentAbsoluteSpeed = relativeSpeed * baseSpeedMultiplier;
@@ -179,6 +182,43 @@ const SessionControls = ({
               </TooltipTrigger>
               <TooltipContent style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 300, letterSpacing: '-0.01em' }}>
                 <p>Reset Canvas</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="transform-gpu transition-transform duration-150 hover:translate-y-[-2px] active:translate-y-[1px]">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={audio.isRecording ? audio.stop : audio.start}
+                    disabled={disabled}
+                    className="flex items-center gap-2 h-[28px] px-2 py-1"
+                    style={{
+                      backgroundColor: audio.isRecording ? '#DD4627' : 'transparent',
+                      color: audio.isRecording ? 'white' : 'inherit',
+                    }}
+                  >
+                    <div className="w-[28px] h-[28px] p-[4.4px] flex items-center justify-center">
+                      {audio.isRecording ? (
+                        <MicOff className="h-[17px] w-[17px]" />
+                      ) : (
+                        <Mic className="h-[17px] w-[17px]" />
+                      )}
+                    </div>
+                    <span className="text-sm" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 400 }}>
+                      {audio.isRecording ? "Stop Audio" : "Turn on audio recording"}
+                    </span>
+                    {audio.isRecording && (
+                      <div className="w-2 h-2 rounded-full bg-white animate-pulse ml-1" />
+                    )}
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 300, letterSpacing: '-0.01em' }}>
+                <p>{audio.isRecording ? "Stop Audio Recording" : "Turn on audio recording"}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

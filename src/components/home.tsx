@@ -294,36 +294,6 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden" style={{ background: '#FBFAF8' }}>
-      {/* Audio Recording Controls */}
-      <div style={{ position: 'absolute', top: 24, right: 32, zIndex: 100 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {audio.isRecording && (
-            <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#DD4627', display: 'inline-block', marginRight: 8, boxShadow: '0 0 8px #DD4627' }} />
-          )}
-          {!audio.isRecording && (
-            <button onClick={audio.start} style={{ padding: '8px 18px', background: '#DD4627', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Turn on audio recording</button>
-          )}
-          {audio.isRecording && !audio.isPaused && (
-            <button onClick={audio.pause} style={{ padding: '8px 18px', background: '#EAB22B', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Pause</button>
-          )}
-          {audio.isRecording && audio.isPaused && (
-            <button onClick={audio.resume} style={{ padding: '8px 18px', background: '#889DF0', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Resume</button>
-          )}
-          {audio.isRecording && (
-            <button onClick={audio.stop} style={{ padding: '8px 18px', background: '#222', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Stop</button>
-          )}
-        </div>
-        {audio.audioUrl && (
-          <div style={{ marginTop: 10 }}>
-            <audio controls src={audio.audioUrl} />
-          </div>
-        )}
-        {currentSessionName && (
-          <div style={{ marginTop: 10, fontWeight: 600, color: '#222' }}>
-            Session: {currentSessionName}
-          </div>
-        )}
-      </div>
       {/* Main Content Area with Absolute Positioned Toolbox */}
       <div className="flex-1 flex flex-col relative">
         {/* Toolbox Panel - Absolute Positioned */}
@@ -353,6 +323,7 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
           onSessionEnd={onSessionEnd}
           sessionName={currentSessionName}
           imageUrl={imageUrl}
+          audioRecorder={audio}
         />
       </div>
       <Traceboard />
