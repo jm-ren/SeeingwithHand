@@ -27,12 +27,14 @@ const SessionPageContent: React.FC<{ imageId?: string; sessionId?: string }> = (
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showReplay, setShowReplay] = useState(false);
   const { annotations, groups } = useAnnotations();
-  const { sessionId: sessionIdFromContext } = useSession();
+  const { sessionId: sessionIdFromContext, endSession } = useSession();
   const navigate = useNavigate();
 
   // Handler to trigger survey after session ends
   const handleSessionEnd = (summary: { sessionName: string; imageUrl: string; audioUrl?: string; audioBlob?: Blob }) => {
     console.log('[SessionPage] handleSessionEnd called with:', summary);
+    // End the session to stop canvas recording
+    endSession();
     setSessionSummary(summary);
     setShowSurvey(true);
   };
@@ -91,26 +93,112 @@ const SessionPageContent: React.FC<{ imageId?: string; sessionId?: string }> = (
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ minHeight: '100vh', backgroundColor: '#FBFAF8' }}>
       {showSurvey && sessionSummary && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold mb-4">Session Reflection</h2>
-              
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+            fontFamily: 'Azeret Mono, monospace'
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowSurvey(false);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setShowSurvey(false);
+            }
+          }}
+          tabIndex={0}
+        >
+          <div style={{
+            backgroundColor: '#FFFFFF',
+            border: '1px solid #666666',
+            borderRadius: '0',
+            padding: '32px',
+            maxWidth: '720px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            margin: '20px',
+            position: 'relative'
+          }}>
+            {/* Close button */}
+            <button
+              onClick={() => setShowSurvey(false)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                width: '32px',
+                height: '32px',
+                border: '1px solid #666666',
+                borderRadius: '0',
+                backgroundColor: '#FFFFFF',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#666666';
+                e.currentTarget.style.color = '#FFFFFF';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#FFFFFF';
+                e.currentTarget.style.color = '#333333';
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+            <div style={{ marginBottom: '32px' }}>              
               {/* Session Summary */}
-              <div className="bg-gray-100 rounded-lg p-4 mb-6">
-                <h3 className="font-semibold mb-2">{sessionSummary.sessionName}</h3>
+              <div style={{
+                padding: '24px',
+                border: '1px solid #CCCCCC',
+                borderRadius: '0',
+                backgroundColor: '#F8F8F8',
+                marginBottom: '32px'
+              }}>
+                <h3 style={{
+                  fontFamily: 'Azeret Mono, monospace',
+                  fontSize: '16px',
+                  fontWeight: 500,
+                  letterSpacing: '0.5px',
+                  color: '#333333',
+                  margin: '0 0 16px 0'
+                }}>
+                  {sessionSummary.sessionName}
+                </h3>
                 <img 
                   src={sessionSummary.imageUrl} 
                   alt="Session" 
-                  className="w-full h-48 object-cover rounded mb-4"
+                  style={{
+                    width: '100%',
+                    height: '240px',
+                    objectFit: 'cover',
+                    borderRadius: '0',
+                    border: '1px solid #CCCCCC',
+                    marginBottom: '16px'
+                  }}
                 />
                 
                 {/* Audio Player */}
                 {sessionSummary.audioUrl && (
-                  <div className="mb-4">
-                    <audio controls className="w-full">
+                  <div style={{ marginBottom: '16px' }}>
+                    <audio controls style={{ width: '100%' }}>
                       <source src={sessionSummary.audioUrl} type="audio/webm" />
                       Your browser does not support the audio element.
                     </audio>
@@ -120,12 +208,35 @@ const SessionPageContent: React.FC<{ imageId?: string; sessionId?: string }> = (
                 {/* Replay Button */}
                 <button
                   onClick={() => setShowReplay(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '12px 20px',
+                    border: '1px solid #666666',
+                    borderRadius: '0',
+                    backgroundColor: '#FFFFFF',
+                    color: '#333333',
+                    fontFamily: 'Azeret Mono, monospace',
+                    fontSize: '14px',
+                    fontWeight: 400,
+                    letterSpacing: '0.5px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#333333';
+                    e.currentTarget.style.color = '#FFFFFF';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#FFFFFF';
+                    e.currentTarget.style.color = '#333333';
+                  }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polygon points="5,3 19,12 5,21"/>
                   </svg>
-                  View Session Replay
+                  view session replay
                 </button>
               </div>
             </div>
