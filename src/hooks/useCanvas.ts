@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { Point, Annotation, Tool } from '../types/annotations';
 import { drawAnnotations } from '../lib/imageProcessing';
 import { appSettings } from '../config/appConfig';
+import { useAnnotations } from '../context/AnnotationContext';
 
 interface UseCanvasOptions {
   imageUrl?: string;
@@ -18,6 +19,8 @@ export function useCanvas({
   onAnnotationCreate,
   onAnnotationUpdate,
 }: UseCanvasOptions = {}) {
+  const { selectedColor } = useAnnotations();
+
   // Refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -140,8 +143,8 @@ export function useCanvas({
     
     // Draw current annotation in progress
     if (currentPoints.length > 0) {
-      ctx.strokeStyle = appSettings.canvas.defaultColor;
-      ctx.fillStyle = appSettings.canvas.defaultColor;
+      ctx.strokeStyle = selectedColor;
+      ctx.fillStyle = selectedColor;
       ctx.lineWidth = appSettings.canvas.lineWidth;
       
       switch (selectedTool) {
@@ -201,7 +204,7 @@ export function useCanvas({
           break;
       }
     }
-  }, [annotations, currentPoints, selectedTool, canvasScale]);
+  }, [annotations, currentPoints, selectedTool, canvasScale, selectedColor]);
 
   // Update canvas when dependencies change
   useEffect(() => {
@@ -239,14 +242,14 @@ export function useCanvas({
           onAnnotationCreate({
             type: 'point',
             points: [point],
-            color: appSettings.canvas.defaultColor,
+            color: selectedColor,
           });
         }
         setIsDrawing(false);
         setCurrentPoints([]);
       }
     },
-    [getCanvasCoordinates, selectedTool, onAnnotationCreate]
+    [getCanvasCoordinates, selectedTool, onAnnotationCreate, selectedColor]
   );
 
   // Handle mouse move
@@ -286,13 +289,13 @@ export function useCanvas({
       onAnnotationCreate({
         type: selectedTool,
         points: currentPoints,
-        color: appSettings.canvas.defaultColor,
+        color: selectedColor,
       });
     }
     
     setIsDrawing(false);
     setCurrentPoints([]);
-  }, [isDrawing, currentPoints, selectedTool, onAnnotationCreate]);
+  }, [isDrawing, currentPoints, selectedTool, onAnnotationCreate, selectedColor]);
 
   // Handle mouse out
   const handleMouseOut = useCallback(() => {

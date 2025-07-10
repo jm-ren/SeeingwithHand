@@ -21,6 +21,7 @@ import EyeVisualization from "./EyeVisualization";
 import Legend from "./Legend";
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { Mic, MicOff } from "lucide-react";
+import ColorPalette from "./ColorPalette";
 
 interface SessionControlsProps {
   onTransform?: () => void;
@@ -354,7 +355,8 @@ const SessionControls = ({
           </Dialog>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-6">
+          <ColorPalette />
           <span className="text-xs" style={{ 
             fontFamily: 'Azeret Mono, monospace', 
             fontWeight: 400, 

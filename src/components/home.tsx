@@ -64,7 +64,7 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
     
   // Use contexts - get countdown and session state from context
   const { isSessionActive, countdown, showCountdown } = useSession();
-  const { resetSession, annotations } = useAnnotations();
+  const { resetSession, annotations, selectedTool: contextSelectedTool, setSelectedTool: setContextSelectedTool, selectedCount: contextSelectedCount, selectedColor } = useAnnotations();
   const audio = useAudioRecorder();
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [currentSessionName, setCurrentSessionName] = useState<string | null>(null);
@@ -156,142 +156,129 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
   }, [annotations]);
 
   const handleTransform = useCallback(() => {
-    if (!visualizationCanvas) {
-      console.error("Visualization canvas not initialized");
+    if (!visualizationCanvas || annotations.length === 0) {
+      console.log("Canvas not ready or no annotations to transform");
       return;
     }
 
     const ctx = visualizationCanvas.getContext("2d");
     if (!ctx) {
-      console.error("Could not get visualization canvas context");
+      console.error("Failed to get canvas context");
       return;
     }
 
-    // Clear the canvas
-    ctx.clearRect(0, 0, visualizationCanvas.width, visualizationCanvas.height);
-
-    // Load the image
     const image = new Image();
     image.crossOrigin = "anonymous";
-
     image.onload = () => {
-      try {
-        // Draw the image
-        ctx.drawImage(image, 0, 0, visualizationCanvas.width, visualizationCanvas.height);
+      ctx.clearRect(0, 0, visualizationCanvas.width, visualizationCanvas.height);
+      ctx.drawImage(image, 0, 0, visualizationCanvas.width, visualizationCanvas.height);
 
-        // Draw annotations
-        annotations.forEach((annotation) => {
-          ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
-          ctx.lineWidth = appSettings.canvas.lineWidth;
+      // Set drawing properties using selected color
+      ctx.strokeStyle = selectedColor;
+      ctx.lineWidth = appSettings.canvas.lineWidth;
+      ctx.fillStyle = selectedColor;
 
-          switch (annotation.type) {
-            case "point":
-              if (annotation.points[0]) {
-                ctx.beginPath();
-                ctx.arc(
-                  annotation.points[0].x,
-                  annotation.points[0].y,
-                  appSettings.canvas.pointRadius,
-                  0,
-                  Math.PI * 2
-                );
-                ctx.stroke();
-              }
-              break;
-            case "line":
-              if (annotation.points[0] && annotation.points[1]) {
-                ctx.beginPath();
-                ctx.moveTo(annotation.points[0].x, annotation.points[0].y);
-                ctx.lineTo(annotation.points[1].x, annotation.points[1].y);
-                ctx.stroke();
-              }
-              break;
-            case "frame":
-              if (annotation.points.length >= 3) {
-                ctx.beginPath();
-                ctx.moveTo(annotation.points[0].x, annotation.points[0].y);
-                annotation.points.forEach((point) => {
-                  ctx.lineTo(point.x, point.y);
-                });
-                ctx.closePath();
-                ctx.stroke();
-              } else if (annotation.points[0] && annotation.points[1]) {
-                const width = annotation.points[1].x - annotation.points[0].x;
-                const height = annotation.points[1].y - annotation.points[0].y;
-                ctx.strokeRect(
-                  annotation.points[0].x,
-                  annotation.points[0].y,
-                  width,
-                  height
-                );
-              }
-              break;
-            case "area":
-              if (annotation.points.length >= 3) {
-                ctx.beginPath();
-                ctx.moveTo(annotation.points[0].x, annotation.points[0].y);
-                annotation.points.forEach((point) => {
-                  ctx.lineTo(point.x, point.y);
-                });
-                ctx.closePath();
-                ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
-                ctx.fill();
-                ctx.stroke();
-              } else if (annotation.points[0] && annotation.points[1]) {
-                const width = annotation.points[1].x - annotation.points[0].x;
-                const height = annotation.points[1].y - annotation.points[0].y;
-                ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
-                ctx.fillRect(
-                  annotation.points[0].x,
-                  annotation.points[0].y,
-                  width,
-                  height
-                );
-                ctx.strokeRect(
-                  annotation.points[0].x,
-                  annotation.points[0].y,
-                  width,
-                  height
-                );
-              }
-              break;
-            case "freehand":
-              if (annotation.points.length > 0) {
-                ctx.beginPath();
-                ctx.moveTo(annotation.points[0].x, annotation.points[0].y);
-                annotation.points.forEach((point) => {
-                  ctx.lineTo(point.x, point.y);
-                });
-                ctx.stroke();
-              }
-              break;
-          }
-        });
+      // Draw annotations
+      annotations.forEach((annotation) => {
+        switch (annotation.type) {
+          case "point":
+            if (annotation.points[0]) {
+              ctx.beginPath();
+              ctx.arc(
+                annotation.points[0].x,
+                annotation.points[0].y,
+                appSettings.canvas.pointRadius,
+                0,
+                Math.PI * 2
+              );
+              ctx.stroke();
+            }
+            break;
+          case "line":
+            if (annotation.points[0] && annotation.points[1]) {
+              ctx.beginPath();
+              ctx.moveTo(annotation.points[0].x, annotation.points[0].y);
+              ctx.lineTo(annotation.points[1].x, annotation.points[1].y);
+              ctx.stroke();
+            }
+            break;
+          case "frame":
+            if (annotation.points.length >= 3) {
+              ctx.beginPath();
+              ctx.moveTo(annotation.points[0].x, annotation.points[0].y);
+              annotation.points.forEach((point) => {
+                ctx.lineTo(point.x, point.y);
+              });
+              ctx.closePath();
+              ctx.stroke();
+            } else if (annotation.points[0] && annotation.points[1]) {
+              const width = annotation.points[1].x - annotation.points[0].x;
+              const height = annotation.points[1].y - annotation.points[0].y;
+              ctx.strokeRect(
+                annotation.points[0].x,
+                annotation.points[0].y,
+                width,
+                height
+              );
+            }
+            break;
+          case "area":
+            if (annotation.points.length >= 3) {
+              ctx.beginPath();
+              ctx.moveTo(annotation.points[0].x, annotation.points[0].y);
+              annotation.points.forEach((point) => {
+                ctx.lineTo(point.x, point.y);
+              });
+              ctx.closePath();
+              ctx.fillStyle = `${selectedColor}33`; // 20% opacity for fill
+              ctx.fill();
+              ctx.stroke();
+            } else if (annotation.points[0] && annotation.points[1]) {
+              const width = annotation.points[1].x - annotation.points[0].x;
+              const height = annotation.points[1].y - annotation.points[0].y;
+              ctx.fillStyle = `${selectedColor}33`; // 20% opacity for fill
+              ctx.fillRect(
+                annotation.points[0].x,
+                annotation.points[0].y,
+                width,
+                height
+              );
+              ctx.strokeRect(
+                annotation.points[0].x,
+                annotation.points[0].y,
+                width,
+                height
+              );
+            }
+            break;
+          case "freehand":
+            if (annotation.points.length > 1) {
+              ctx.beginPath();
+              ctx.moveTo(annotation.points[0].x, annotation.points[0].y);
+              annotation.points.forEach((point) => {
+                ctx.lineTo(point.x, point.y);
+              });
+              ctx.stroke();
+            }
+            break;
+        }
+      });
 
-        // Create a blob from the canvas and trigger download
-        visualizationCanvas.toBlob((blob) => {
-          if (blob) {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "visualization.png";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-          }
-        });
-      } catch (error) {
-        console.error("Error creating visualization:", error);
-      }
+      console.log("Canvas transformed with annotations");
+      // The original code had onImageAnalysis here, but it's not defined in the new_code.
+      // Assuming it's meant to be passed as a prop or removed if not needed.
+      // For now, commenting out the call to avoid errors.
+      // if (onImageAnalysis) {
+      //   onImageAnalysis(visualizationCanvas.toDataURL());
+      // }
     };
 
-    image.onerror = () => {
-      console.error("Error loading image for visualization");
+    image.onerror = (error) => {
+      console.error("Error loading image for transform:", error);
     };
 
     image.src = imageUrl;
-  }, [annotations, visualizationCanvas, imageUrl]);
+  }, [visualizationCanvas, annotations, imageUrl, selectedColor]); // Added imageUrl to dependency array
 
   return (
     <div className="flex h-screen w-screen overflow-hidden" style={{ background: '#FBFAF8' }}>

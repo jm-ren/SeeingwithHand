@@ -11,6 +11,7 @@ interface AnnotationContextType {
   isRecording: boolean;
   countdown: number;
   showCountdown: boolean;
+  selectedColor: string;
   
   // Derived data
   traces: TraceItem[];
@@ -24,6 +25,7 @@ interface AnnotationContextType {
   selectAnnotation: (id: string, multiSelect?: boolean) => void;
   deselectAll: () => void;
   setSelectedTool: (tool: Tool) => void;
+  setSelectedColor: (color: string) => void;
   createGroup: (annotationIds: string[]) => void;
   startRecording: () => void;
   stopRecording: () => void;
@@ -59,6 +61,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [countdown, setCountdown] = useState(10);
   const [showCountdown, setShowCountdown] = useState(true);
+  const [selectedColor, setSelectedColor] = useState<string>('#2CA800'); // Default to first palette color
 
   // Derived data
   const traces = processTracesForDisplay(annotations);
@@ -164,6 +167,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     isRecording,
     countdown,
     showCountdown,
+    selectedColor,
     
     // Derived data
     traces,
@@ -177,6 +181,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     selectAnnotation,
     deselectAll,
     setSelectedTool,
+    setSelectedColor,
     createGroup,
     startRecording,
     stopRecording,

@@ -41,7 +41,8 @@ const AnnotationCanvas = ({
     groups,
     createGroup,
     selectedCount,
-    selectedAnnotations
+    selectedAnnotations,
+    selectedColor
   } = useAnnotations();
   
   const { isSessionActive, recordInteractionEvent } = useSession();
@@ -87,7 +88,7 @@ const AnnotationCanvas = ({
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // --- V2 Drawing Logic ---
-  const [hoverFadeAlpha, setHoverFadeAlpha] = useState(0.18); // Initial alpha for hover trace
+  const [hoverFadeAlpha, setHoverFadeAlpha] = useState(0.08); // Initial alpha for hover trace (more transparent)
   const [isHoverFading, setIsHoverFading] = useState(false);
 
   // On inactivity, start fading instead of clearing immediately
@@ -98,7 +99,7 @@ const AnnotationCanvas = ({
   // Animate hover trace fading
   useEffect(() => {
     if (hoverTrace.length > 1 && !isHoverFading) {
-      setHoverFadeAlpha(0.18); // Reset alpha when new hover trace starts
+      setHoverFadeAlpha(0.08); // Reset alpha when new hover trace starts
       return;
     }
     if (isHoverFading && hoverTrace.length > 1) {
@@ -125,14 +126,14 @@ const AnnotationCanvas = ({
       addAnnotation({
         type: "hover",
         points: hoverTrace,
-        color: "black",
+        color: selectedColor,
         selected: false,
         gestureType: `hover-${gesture.type}`,
         ...gesture.metrics,
       });
     }
     setHoverTrace([]);
-  }, [hoverTrace, addAnnotation]);
+  }, [hoverTrace, addAnnotation, selectedColor]);
 
   // Initialize and load image
   useEffect(() => {
@@ -260,6 +261,76 @@ const AnnotationCanvas = ({
     return Math.sqrt(dx * dx + dy * dy) <= threshold;
   };
 
+  // Helper function to check if a point is near a line
+  const isPointNearLine = (point: Point, lineStart: Point, lineEnd: Point, threshold: number = 10): boolean => {
+    const A = point.x - lineStart.x;
+    const B = point.y - lineStart.y;
+    const C = lineEnd.x - lineStart.x;
+    const D = lineEnd.y - lineStart.y;
+
+    const dot = A * C + B * D;
+    const lenSq = C * C + D * D;
+    
+    if (lenSq === 0) return isPointNearPoint(point, lineStart, threshold);
+    
+    let param = dot / lenSq;
+    param = Math.max(0, Math.min(1, param));
+    
+    const xx = lineStart.x + param * C;
+    const yy = lineStart.y + param * D;
+    
+    const dx = point.x - xx;
+    const dy = point.y - yy;
+    return Math.sqrt(dx * dx + dy * dy) <= threshold;
+  };
+
+  // Helper function to check if a point is inside a polygon
+  const isPointInPolygon = (point: Point, polygon: Point[], threshold: number = 5): boolean => {
+    if (polygon.length < 3) return false;
+    
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      if (((polygon[i].y > point.y) !== (polygon[j].y > point.y)) &&
+          (point.x < (polygon[j].x - polygon[i].x) * (point.y - polygon[i].y) / (polygon[j].y - polygon[i].y) + polygon[i].x)) {
+        inside = !inside;
+      }
+    }
+    
+    // Also check if point is near any edge (for easier selection)
+    if (!inside) {
+      for (let i = 0; i < polygon.length; i++) {
+        const j = (i + 1) % polygon.length;
+        if (isPointNearLine(point, polygon[i], polygon[j], threshold)) {
+          return true;
+        }
+      }
+    }
+    
+    return inside;
+  };
+
+  // Helper function to check if a point is inside a rectangle
+  const isPointInRect = (point: Point, rectStart: Point, rectEnd: Point, threshold: number = 5): boolean => {
+    const minX = Math.min(rectStart.x, rectEnd.x) - threshold;
+    const maxX = Math.max(rectStart.x, rectEnd.x) + threshold;
+    const minY = Math.min(rectStart.y, rectEnd.y) - threshold;
+    const maxY = Math.max(rectStart.y, rectEnd.y) + threshold;
+    
+    return point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY;
+  };
+
+  // Helper function to check if a point is near a polyline (freehand path)
+  const isPointNearPolyline = (point: Point, polyline: Point[], threshold: number = 10): boolean => {
+    if (polyline.length < 2) return false;
+    
+    for (let i = 0; i < polyline.length - 1; i++) {
+      if (isPointNearLine(point, polyline[i], polyline[i + 1], threshold)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   // Helper function to draw a polygon
   const drawPolygon = (
     ctx: CanvasRenderingContext2D, 
@@ -277,7 +348,7 @@ const AnnotationCanvas = ({
     for (let i = 0; i < points.length; i++) {
       const isFirstPoint = i === 0;
       const pointSize = isFirstPoint ? 6 : 4;
-      const pointColor = isFirstPoint ? 'rgba(221, 70, 39, 0.7)' : 'rgba(0, 0, 0, 0.5)';
+      const pointColor = isFirstPoint ? `${selectedColor}B3` : `${selectedColor}80`; // B3 = 70% opacity, 80 = 50% opacity
       
       ctx.fillStyle = pointColor;
       ctx.beginPath();
@@ -367,9 +438,10 @@ const AnnotationCanvas = ({
       annotations.forEach((annotation) => {
         // Determine if this annotation is selected based on selectedAnnotations
         const isSelected = selectedAnnotations.includes(annotation.id);
-        const strokeColor = isSelected ? "rgba(0, 0, 255, 0.5)" : "rgba(0, 0, 0, 0.5)";
+        // Use selected color for all traces, with opacity adjustment for selection state
+        const strokeColor = isSelected ? `${selectedColor}CC` : `${selectedColor}AA`; // CC = 80% opacity, AA = 67% opacity
         const lineWidth = isSelected ? appSettings.canvas.selectionLineWidth : appSettings.canvas.lineWidth;
-        const fillColor = isSelected ? "rgba(0, 0, 255, 0.1)" : "rgba(0, 0, 0, 0.1)";
+        const fillColor = isSelected ? `${selectedColor}33` : `${selectedColor}1A`; // 33 = 20% opacity, 1A = 10% opacity
 
         switch (annotation.type) {
           case "point":
@@ -474,6 +546,10 @@ const AnnotationCanvas = ({
 
       // Draw current annotation - this needs to be drawn last to appear on top
       if (currentAnnotation.length > 0) {
+        // Use selected color with higher opacity for current drawing
+        const currentStrokeColor = `${selectedColor}CC`; // 80% opacity
+        const currentFillColor = `${selectedColor}33`; // 20% opacity
+        
         switch (selectedTool) {
           case "point":
             if (currentAnnotation[0]) {
@@ -485,7 +561,7 @@ const AnnotationCanvas = ({
                 0,
                 Math.PI * 2
               );
-              ctx.strokeStyle = "rgba(221, 70, 39, 0.5)";
+              ctx.strokeStyle = currentStrokeColor;
               ctx.lineWidth = appSettings.canvas.lineWidth;
               ctx.stroke();
             }
@@ -495,14 +571,14 @@ const AnnotationCanvas = ({
               ctx.beginPath();
               ctx.moveTo(currentAnnotation[0].x, currentAnnotation[0].y);
               ctx.lineTo(tempMousePos.x, tempMousePos.y);
-              ctx.strokeStyle = "rgba(221, 70, 39, 0.5)";
+              ctx.strokeStyle = currentStrokeColor;
               ctx.lineWidth = appSettings.canvas.lineWidth;
               ctx.stroke();
             } else if (currentAnnotation[0] && currentAnnotation[1]) {
               ctx.beginPath();
               ctx.moveTo(currentAnnotation[0].x, currentAnnotation[0].y);
               ctx.lineTo(currentAnnotation[1].x, currentAnnotation[1].y);
-              ctx.strokeStyle = "rgba(221, 70, 39, 0.5)";
+              ctx.strokeStyle = currentStrokeColor;
               ctx.lineWidth = appSettings.canvas.lineWidth;
               ctx.stroke();
             }
@@ -515,8 +591,8 @@ const AnnotationCanvas = ({
                 ctx, 
                 currentAnnotation, 
                 false, 
-                "rgba(0, 0, 0, 0.1)", 
-                "rgba(221, 70, 39, 0.5)", 
+                currentFillColor, 
+                currentStrokeColor, 
                 appSettings.canvas.lineWidth,
                 true
               );
@@ -535,7 +611,7 @@ const AnnotationCanvas = ({
             else if (currentAnnotation[0] && currentAnnotation[1]) {
               const width = currentAnnotation[1].x - currentAnnotation[0].x;
               const height = currentAnnotation[1].y - currentAnnotation[0].y;
-              ctx.strokeStyle = "rgba(221, 70, 39, 0.5)";
+              ctx.strokeStyle = currentStrokeColor;
               ctx.lineWidth = appSettings.canvas.lineWidth;
               ctx.strokeRect(
                 currentAnnotation[0].x,
@@ -553,8 +629,8 @@ const AnnotationCanvas = ({
                 ctx, 
                 currentAnnotation, 
                 true, 
-                "rgba(221, 70, 39, 0.1)", 
-                "rgba(221, 70, 39, 0.5)", 
+                currentFillColor, 
+                currentStrokeColor, 
                 appSettings.canvas.lineWidth,
                 true
               );
@@ -573,14 +649,14 @@ const AnnotationCanvas = ({
             else if (currentAnnotation[0] && currentAnnotation[1]) {
               const width = currentAnnotation[1].x - currentAnnotation[0].x;
               const height = currentAnnotation[1].y - currentAnnotation[0].y;
-              ctx.fillStyle = "rgba(221, 70, 39, 0.1)";
+              ctx.fillStyle = currentFillColor;
               ctx.fillRect(
                 currentAnnotation[0].x,
                 currentAnnotation[0].y,
                 width,
                 height
               );
-              ctx.strokeStyle = "rgba(221, 70, 39, 0.5)";
+              ctx.strokeStyle = currentStrokeColor;
               ctx.lineWidth = appSettings.canvas.lineWidth;
               ctx.strokeRect(
                 currentAnnotation[0].x,
@@ -597,7 +673,7 @@ const AnnotationCanvas = ({
               currentAnnotation.forEach((point) => {
                 ctx.lineTo(point.x, point.y);
               });
-              ctx.strokeStyle = "rgba(221, 70, 39, 0.5)";
+              ctx.strokeStyle = currentStrokeColor;
               ctx.lineWidth = appSettings.canvas.lineWidth;
               ctx.stroke();
             }
@@ -607,18 +683,22 @@ const AnnotationCanvas = ({
     } catch (error) {
       console.error("Error drawing annotations:", error);
     }
-  }, [annotations, currentAnnotation, groups, selectedTool, isCreatingPolygon, tempMousePos, isDrawing, selectedAnnotations]);
+  }, [annotations, currentAnnotation, groups, selectedTool, isCreatingPolygon, tempMousePos, isDrawing, selectedAnnotations, selectedColor]);
 
   // --- V2 Drawing Logic ---
   const drawV2Trace = useCallback((ctx: CanvasRenderingContext2D) => {
+    // Use selected color for V2 traces
+    const traceColor = `${selectedColor}CC`; // 80% opacity
+    const traceFillColor = `${selectedColor}26`; // 15% opacity
+    
     // Draw growing point (dwell)
     if (traceType === "point" && currentTrace.length > 0) {
       ctx.beginPath();
       ctx.arc(currentTrace[0].x, currentTrace[0].y, dwellRadius, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(221, 70, 39, 0.8)";
+      ctx.strokeStyle = traceColor;
       ctx.lineWidth = appSettings.canvas.lineWidth;
       ctx.stroke();
-      ctx.fillStyle = "rgba(221, 70, 39, 0.15)";
+      ctx.fillStyle = traceFillColor;
       ctx.fill();
     }
     // Draw freehand path as you draw
@@ -628,7 +708,7 @@ const AnnotationCanvas = ({
       for (let i = 1; i < currentTrace.length; i++) {
         ctx.lineTo(currentTrace[i].x, currentTrace[i].y);
       }
-      ctx.strokeStyle = "rgba(221, 70, 39, 0.8)";
+      ctx.strokeStyle = traceColor;
       ctx.lineWidth = appSettings.canvas.lineWidth;
       ctx.stroke();
     }
@@ -641,14 +721,14 @@ const AnnotationCanvas = ({
       for (let i = 1; i < hoverTrace.length; i++) {
         ctx.lineTo(hoverTrace[i].x, hoverTrace[i].y);
       }
-      ctx.strokeStyle = "#222";
+      ctx.strokeStyle = selectedColor;
       ctx.lineWidth = appSettings.canvas.lineWidth;
-      ctx.shadowColor = "#222";
+      ctx.shadowColor = selectedColor;
       ctx.shadowBlur = 6;
       ctx.stroke();
       ctx.restore();
     }
-  }, [traceType, currentTrace, dwellRadius, hoverTrace, hoverFadeAlpha]);
+  }, [traceType, currentTrace, dwellRadius, hoverTrace, hoverFadeAlpha, selectedColor]);
 
   // Patch drawCanvas to call drawV2Trace
   const drawCanvas = useCallback(() => {
@@ -844,7 +924,7 @@ const AnnotationCanvas = ({
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     finalizeHoverTrace();
     setIsHoverFading(false);
-    setHoverFadeAlpha(0.18);
+    setHoverFadeAlpha(0.08);
     if (!imageScaling) return;
     const rect = canvasRef.current!.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -885,7 +965,7 @@ const AnnotationCanvas = ({
     } else if (!pointerDown) {
       setHoverTrace((prev) => [...prev, { x, y }]);
       setIsHoverFading(false);
-      setHoverFadeAlpha(0.18);
+      setHoverFadeAlpha(0.08);
       // Reset hover inactivity timer
       if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = setTimeout(() => {
@@ -907,7 +987,7 @@ const AnnotationCanvas = ({
       addAnnotation({
         type: "point",
         points: [currentTrace[0]],
-        color: "black",
+        color: selectedColor,
         selected: false,
         gestureType: gesture,
         duration,
@@ -918,7 +998,7 @@ const AnnotationCanvas = ({
       addAnnotation({
         type: "freehand",
         points: currentTrace,
-        color: "black",
+        color: selectedColor,
         selected: false,
         gestureType: gesture.type,
         ...gesture.metrics,
@@ -929,7 +1009,7 @@ const AnnotationCanvas = ({
     setCurrentTrace([]);
     setTraceType("none");
     setDwellRadius(5);
-  }, [pointerDown, traceType, currentTrace, pointerStart, addAnnotation]);
+  }, [pointerDown, traceType, currentTrace, pointerStart, addAnnotation, selectedColor]);
 
   const handlePointerLeaveV2 = useCallback((e?: React.PointerEvent<HTMLCanvasElement>) => {
     if (e) e.preventDefault();
@@ -937,7 +1017,7 @@ const AnnotationCanvas = ({
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     finalizeHoverTrace();
     setIsHoverFading(false);
-    setHoverFadeAlpha(0.18);
+    setHoverFadeAlpha(0.08);
     setHoverTrace([]);
   }, [pointerDown, handlePointerUpV2, finalizeHoverTrace]);
 
