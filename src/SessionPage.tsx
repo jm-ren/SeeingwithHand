@@ -260,12 +260,36 @@ const SessionPageContent: React.FC<{ imageId?: string; sessionId?: string }> = (
       )}
 
       {showConfirmation ? (
-        <div style={{ width: '100vw', height: '100vh', background: '#F9F8F4', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ 
+          width: '100vw', 
+          height: '100vh', 
+          background: '#FBFAF8', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          fontFamily: 'Azeret Mono, monospace'
+        }}>
           <div style={{ textAlign: 'center', maxWidth: 600, padding: 40 }}>
-            <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 16, color: '#2D2D2D' }}>
+            <h1 style={{ 
+              fontSize: '28px', 
+              fontFamily: 'Azeret Mono, monospace',
+              fontWeight: 500, 
+              letterSpacing: '0.5px',
+              marginBottom: 16, 
+              color: '#333333' 
+            }}>
               Thank you for sharing!
             </h1>
-            <p style={{ fontSize: 18, color: '#666', marginBottom: 32, lineHeight: 1.6 }}>
+            <p style={{ 
+              fontSize: '16px', 
+              fontFamily: 'Azeret Mono, monospace',
+              fontWeight: 400,
+              letterSpacing: '0.5px',
+              color: '#666666', 
+              marginBottom: 32, 
+              lineHeight: 1.6 
+            }}>
               Your session has been saved successfully. You'll be redirected to the gallery shortly.
             </p>
             <button
@@ -273,13 +297,15 @@ const SessionPageContent: React.FC<{ imageId?: string; sessionId?: string }> = (
               style={{ 
                 padding: '12px 32px', 
                 background: '#DD4627', 
-                color: '#fff', 
-                border: 'none', 
-                borderRadius: 8, 
-                fontWeight: 600, 
-                fontSize: 16, 
+                color: '#FFFFFF', 
+                border: '1px solid #666666', 
+                borderRadius: '0',
+                fontFamily: 'Azeret Mono, monospace',
+                fontWeight: 500, 
+                fontSize: '16px',
+                letterSpacing: '0.5px',
                 cursor: 'pointer',
-                transition: 'background-color 0.2s'
+                transition: 'all 0.2s ease'
               }}
               onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#B73A20'}
               onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#DD4627'}

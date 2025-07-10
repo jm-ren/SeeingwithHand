@@ -74,14 +74,39 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
 
   if (loading) {
     return (
-      <div style={{ width: 650, minWidth: 650, maxWidth: 650, padding: 24, background: '#F1EEEA', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ 
+        width: 650, 
+        minWidth: 650, 
+        maxWidth: 650, 
+        padding: 24, 
+        background: '#FBFAF8', 
+        height: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        fontFamily: 'Azeret Mono, monospace',
+        fontSize: '14px',
+        fontWeight: 400,
+        letterSpacing: '0.5px',
+        color: '#333333'
+      }}>
         <div>Loading sessions...</div>
       </div>
     );
   }
 
   return (
-    <div style={{ width: 650, minWidth: 650, maxWidth: 650, overflowY: 'auto', borderRight: '1px solid #eee', padding: 24, background: '#F1EEEA', height: '100vh' }}>
+    <div style={{ 
+      width: 650, 
+      minWidth: 650, 
+      maxWidth: 650, 
+      overflowY: 'auto', 
+      borderRight: '1px solid #666666', 
+      padding: 24, 
+      background: '#FBFAF8', 
+      height: '100vh',
+      fontFamily: 'Azeret Mono, monospace'
+    }}>
       {mockImages.map((img) => {
         const sessions = imageSessions[img.id] || [];
         
@@ -89,17 +114,17 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
           <div key={img.id} style={{ marginBottom: 48 }}>
             <div
               style={{
-                width: 320,
-                height: 240,
-                background: '#fafafa',
-                border: '1px solid #ddd',
-                borderRadius: 8,
-                marginBottom: 8,
+                width: 'calc(100% - 32px)',
+                height: 'calc((100% - 32px) * 3 / 4)',
+                margin: '0 16px 8px 16px',
+                background: '#FFFFFF',
+                border: '1px solid #666666',
+                borderRadius: '0',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
+                justifyContent: 'flex-start',
                 cursor: 'pointer',
-                boxShadow: locked?.imageId === img.id && !locked.sessionId ? '0 0 0 2px #4285F4' : undefined,
+                boxShadow: locked?.imageId === img.id && !locked.sessionId ? '0 0 0 2px #333333' : undefined,
               }}
               onMouseEnter={() => handleHover(img)}
               onClick={() => handleClick(img)}
@@ -110,7 +135,15 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
                 style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }}
               />
             </div>
-            <div style={{ fontWeight: 600 }}>{img.title}</div>
+            <div style={{ 
+              fontFamily: 'Azeret Mono, monospace',
+              fontWeight: 500,
+              fontSize: '14px',
+              letterSpacing: '0.5px',
+              color: '#333333'
+            }}>
+              {img.title}
+            </div>
             
             {/* Display real sessions */}
             <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -119,18 +152,22 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
                   key={session.id}
                   style={{
                     padding: '8px 16px',
-                    background: '#fff',
-                    border: '1px solid #bbb',
-                    borderRadius: 6,
+                    background: '#FFFFFF',
+                    border: '1px solid #666666',
+                    borderRadius: '0',
                     cursor: 'pointer',
-                    fontSize: 14,
-                    boxShadow: locked?.imageId === img.id && locked.sessionId === session.id ? '0 0 0 2px #4285F4' : undefined,
+                    fontSize: '12px',
+                    fontFamily: 'Azeret Mono, monospace',
+                    fontWeight: 400,
+                    letterSpacing: '0.5px',
+                    color: '#333333',
+                    boxShadow: locked?.imageId === img.id && locked.sessionId === session.id ? '0 0 0 2px #333333' : undefined,
                   }}
                   onMouseEnter={() => handleHover(img, session)}
                   onClick={() => handleClick(img, session)}
                 >
                   {session.session_name} 
-                  <span style={{ color: '#888', fontSize: 12 }}>
+                  <span style={{ color: '#666666', fontSize: '11px' }}>
                     ({session.survey_data?.nickname || 'anonymous'})
                   </span>
                 </div>
@@ -140,16 +177,24 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
             <div style={{ marginTop: 16 }}>
               <button
                 style={{
-                  padding: '10px 24px',
-                  background: '#DD4627',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 8,
-                  fontWeight: 600,
-                  fontSize: 16,
+                  padding: '12px 24px',
+                  background: '#666666',
+                  color: '#FFFFFF',
+                  border: '1px solid #666666',
+                  borderRadius: '0',
+                  fontFamily: 'Azeret Mono, monospace',
+                  fontWeight: 500,
+                  fontSize: '14px',
+                  letterSpacing: '0.5px',
                   cursor: 'pointer',
                   marginTop: 8,
-                  opacity: 0.9,
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#333333';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#666666';
                 }}
                 onClick={() => handleClick(img, { id: 'new', name: 'start session' })}
               >

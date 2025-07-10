@@ -8,7 +8,7 @@ const GalleryLayout: React.FC = () => {
   const [selected, setSelected] = useState<{ image: any; session?: any } | null>(null);
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: '#F9F8F4' }}>
+    <div style={{ display: 'flex', height: '100vh', background: '#FBFAF8', fontFamily: 'Azeret Mono, monospace' }}>
       <GalleryCataloguePanel
         onHover={(image, session) => setHovered({ image, session })}
         onSelect={(image, session) => setSelected({ image, session })}

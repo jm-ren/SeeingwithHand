@@ -88,22 +88,57 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div style={{
+        backgroundColor: '#FFFFFF',
+        border: '1px solid #666666',
+        borderRadius: '0',
+        padding: '24px',
+        maxWidth: '1024px',
+        width: '100%',
+        maxHeight: '90vh',
+        overflowY: 'auto',
+        fontFamily: 'Azeret Mono, monospace'
+      }}>
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-4">
-            <div className="text-sm text-gray-500">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{
+              fontSize: '12px',
+              fontFamily: 'Azeret Mono, monospace',
+              fontWeight: 400,
+              letterSpacing: '0.5px',
+              color: '#666666'
+            }}>
               {sessionDate && <span>{sessionDate}</span>}
-              {sessionDate && sessionDuration && <span className="mx-2">•</span>}
+              {sessionDate && sessionDuration && <span style={{ margin: '0 8px' }}>•</span>}
               {sessionDuration && <span>{sessionDuration}</span>}
             </div>
           </div>
           {onClose && (
             <button
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-700"
+              style={{
+                background: 'transparent',
+                border: '1px solid #666666',
+                borderRadius: '0',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: '#666666'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#666666';
+                e.currentTarget.style.color = '#FFFFFF';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = '#666666';
+              }}
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
@@ -112,20 +147,35 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
         </div>
 
         {/* Session Image and Visualization */}
-        <div className="mb-6">
-          <div className="relative bg-gray-100 rounded-lg overflow-hidden">
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{ 
+            position: 'relative', 
+            backgroundColor: '#F8F8F8', 
+            borderRadius: '0',
+            border: '1px solid #666666',
+            overflow: 'hidden' 
+          }}>
             <img
               src={imageUrl}
               alt={sessionName}
-              className="w-full h-auto max-h-96 object-contain"
+              style={{
+                width: '100%',
+                height: 'auto',
+                maxHeight: '384px',
+                objectFit: 'contain'
+              }}
             />
             {/* Annotation overlay */}
-            <div className="absolute inset-0">
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
               {currentAnnotations.map((annotation) => (
                 <div
                   key={annotation.id}
-                  className="absolute w-2 h-2 bg-green-400 rounded-full"
                   style={{
+                    position: 'absolute',
+                    width: '8px',
+                    height: '8px',
+                    backgroundColor: '#2CA800',
+                    borderRadius: '0',
                     left: `${annotation.points[0]?.x || 0}%`,
                     top: `${annotation.points[0]?.y || 0}%`,
                     transform: 'translate(-50%, -50%)',
@@ -137,8 +187,15 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
         </div>
 
         {/* Eye Visualization */}
-        <div className="mb-6">
-          <div className="bg-gray-200 rounded-lg p-6 flex justify-center">
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{ 
+            backgroundColor: '#F8F8F8', 
+            borderRadius: '0',
+            border: '1px solid #666666',
+            padding: '24px', 
+            display: 'flex', 
+            justifyContent: 'center' 
+          }}>
             <EyeVisualization
               annotations={currentAnnotations}
               isPlaying={isPlaying}
@@ -149,11 +206,22 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
         </div>
 
         {/* Progress Bar */}
-        <div className="mb-6">
-          <div className="w-full bg-gray-200 rounded-full h-2">
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{ 
+            width: '100%', 
+            backgroundColor: '#CCCCCC', 
+            borderRadius: '0',
+            height: '4px',
+            border: '1px solid #666666'
+          }}>
             <div
-              className="bg-blue-500 h-2 rounded-full transition-all duration-100"
-              style={{ width: `${progress}%` }}
+              style={{ 
+                backgroundColor: '#333333', 
+                height: '100%', 
+                borderRadius: '0',
+                transition: 'all 0.1s ease',
+                width: `${progress}%`
+              }}
             />
           </div>
         </div>
@@ -164,10 +232,33 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
         </div>
 
         {/* Animation Controls */}
-        <div className="flex justify-center gap-4 mb-6">
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginBottom: '24px' }}>
           <button
             onClick={restart}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '12px 16px',
+              border: '1px solid #666666',
+              borderRadius: '0',
+              backgroundColor: '#FFFFFF',
+              color: '#333333',
+              fontFamily: 'Azeret Mono, monospace',
+              fontSize: '14px',
+              fontWeight: 400,
+              letterSpacing: '0.5px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#666666';
+              e.currentTarget.style.color = '#FFFFFF';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#FFFFFF';
+              e.currentTarget.style.color = '#333333';
+            }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
