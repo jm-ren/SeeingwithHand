@@ -52,6 +52,7 @@ const SessionControls = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [visualizationProgress, setVisualizationProgress] = useState(0);
   const [speedIndex, setSpeedIndex] = useState(0); // Start at index 0 (1x relative, which is 16x absolute)
+  const [audioEnabled, setAudioEnabled] = useState(true); // Audio recording enabled by default
   const { isSessionActive, startSession, endSession } = useSession();
   const { annotations } = useAnnotations();
   const audio = audioRecorder || useAudioRecorder();
@@ -75,6 +76,10 @@ const SessionControls = ({
       }
     } else {
       startSession();
+      // Automatically start audio recording if enabled
+      if (audioEnabled && !audio.isRecording) {
+        audio.start();
+      }
     }
   };
 
@@ -108,6 +113,17 @@ const SessionControls = ({
     }
   }, [showVisualization]);
 
+  // Sync audio recording with session state
+  useEffect(() => {
+    if (isSessionActive && audioEnabled && !audio.isRecording) {
+      // Session started and audio is enabled but not recording - start audio
+      audio.start();
+    } else if (!isSessionActive && audio.isRecording) {
+      // Session stopped but audio is still recording - stop audio
+      audio.stop();
+    }
+  }, [isSessionActive, audioEnabled, audio.isRecording, audio]);
+
   return (
     <div 
       className="transform-gpu will-change-transform w-full" 
@@ -118,27 +134,31 @@ const SessionControls = ({
         fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
       }}
     >
-      <Card className="w-full h-[60px] bg-[#FBFAF8] flex items-center justify-between px-6 fixed bottom-0 left-0 shadow-sm rounded-none border-0" style={{ 
-        borderTop: '1px solid #E5E7EB',
+      <div className="w-full h-[60px] bg-[#FBFAF8] flex items-center justify-between px-6 fixed bottom-0 left-0 border-0" style={{ 
+        borderTop: '1px solid #666666',
         borderRight: 'none',
         borderBottom: 'none',
-        borderLeft: 'none'
+        borderLeft: 'none',
+        boxShadow: 'none'
       }}>
         <div className="flex items-center gap-6">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="transform-gpu transition-transform duration-150 hover:translate-y-[-2px] active:translate-y-[1px]">
-                  <Button
-                    variant={isSessionActive ? "outline" : "ghost"}
-                    size="sm"
+                  <button
                     onClick={handleStartStop}
                     disabled={disabled}
-                    className="flex items-center gap-2 h-[28px] px-2 py-1"
+                    className="flex items-center gap-3 h-[40px] px-4 border transition-colors"
                     style={{
-                      backgroundColor: isSessionActive ? '#DD4627' : 'transparent',
-                      color: isSessionActive ? 'white' : 'inherit',
-                      borderColor: isSessionActive ? '#DD4627' : undefined
+                      backgroundColor: isSessionActive ? '#333333' : '#F5F5F5',
+                      color: isSessionActive ? '#FFFFFF' : '#333333',
+                      border: '1px solid #666666',
+                      borderRadius: '0',
+                      fontFamily: 'Azeret Mono, monospace',
+                      fontWeight: 400,
+                      fontSize: '14px',
+                      letterSpacing: '0.5px'
                     }}
                   >
                     <div className="w-[28px] h-[28px] p-[4.4px] flex items-center justify-center">
@@ -148,15 +168,23 @@ const SessionControls = ({
                         <PlayCircle className="h-[17px] w-[17px]" />
                       )}
                     </div>
-                    <span className="text-sm" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 400 }}>
-                      {isSessionActive ? "Stop Recording" : "Start Recording"}
+                    <span>
+                      {isSessionActive ? "stop" : "start"}
                     </span>
-                  </Button>
+                  </button>
                 </div>
               </TooltipTrigger>
-              <TooltipContent style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 300, letterSpacing: '-0.01em' }}>
-                <p>{isSessionActive ? "Stop Recording" : "Start Recording"}</p>
-              </TooltipContent>
+                              <TooltipContent style={{ 
+                  fontFamily: 'Azeret Mono, monospace', 
+                  fontWeight: 400, 
+                  letterSpacing: '0.5px',
+                  backgroundColor: '#F5F5F5',
+                  color: '#333333',
+                  border: '1px solid #666666',
+                  borderRadius: '0'
+                }}>
+                  <p>{isSessionActive ? "stop session" : "start session"}</p>
+                </TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
@@ -164,82 +192,86 @@ const SessionControls = ({
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="transform-gpu transition-transform duration-150 hover:translate-y-[-2px] active:translate-y-[1px]">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onReset}
+                  <button
+                    onClick={() => {
+                      const newAudioEnabled = !audioEnabled;
+                      setAudioEnabled(newAudioEnabled);
+                      
+                      // If we're disabling audio and currently recording, stop it
+                      if (!newAudioEnabled && audio.isRecording) {
+                        audio.stop();
+                      }
+                      // If we're enabling audio and session is active but not recording, start it
+                      else if (newAudioEnabled && isSessionActive && !audio.isRecording) {
+                        audio.start();
+                      }
+                    }}
                     disabled={disabled}
-                    className="flex items-center gap-2 h-[28px] px-2 py-1"
-                  >
-                    <div className="w-[28px] h-[28px] p-[4.4px] flex items-center justify-center">
-                      <RotateCcw className="h-[17px] w-[17px]" />
-                    </div>
-                    <span className="text-sm" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 400 }}>
-                      Reset Canvas
-                    </span>
-                  </Button>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 300, letterSpacing: '-0.01em' }}>
-                <p>Reset Canvas</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="transform-gpu transition-transform duration-150 hover:translate-y-[-2px] active:translate-y-[1px]">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={audio.isRecording ? audio.stop : audio.start}
-                    disabled={disabled}
-                    className="flex items-center gap-2 h-[28px] px-2 py-1"
+                    className="flex items-center gap-3 h-[40px] px-4 border transition-colors"
                     style={{
-                      backgroundColor: audio.isRecording ? '#DD4627' : 'transparent',
-                      color: audio.isRecording ? 'white' : 'inherit',
+                      backgroundColor: audioEnabled ? '#333333' : '#F5F5F5',
+                      color: audioEnabled ? '#FFFFFF' : '#333333',
+                      border: '1px solid #666666',
+                      borderRadius: '0',
+                      fontFamily: 'Azeret Mono, monospace',
+                      fontWeight: 400,
+                      fontSize: '14px',
+                      letterSpacing: '0.5px'
                     }}
                   >
                     <div className="w-[28px] h-[28px] p-[4.4px] flex items-center justify-center">
-                      {audio.isRecording ? (
-                        <MicOff className="h-[17px] w-[17px]" />
-                      ) : (
+                      {audioEnabled ? (
                         <Mic className="h-[17px] w-[17px]" />
+                      ) : (
+                        <MicOff className="h-[17px] w-[17px]" />
                       )}
                     </div>
-                    <span className="text-sm" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 400 }}>
-                      {audio.isRecording ? "Stop Audio" : "Turn on audio recording"}
+                    <span>
+                      {audioEnabled ? "audio" : "mute"}
                     </span>
-                    {audio.isRecording && (
-                      <div className="w-2 h-2 rounded-full bg-white animate-pulse ml-1" />
+                    {audioEnabled && audio.isRecording && (
+                      <div className="w-2 h-2 bg-white animate-pulse" />
                     )}
-                  </Button>
+                  </button>
                 </div>
               </TooltipTrigger>
-              <TooltipContent style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 300, letterSpacing: '-0.01em' }}>
-                <p>{audio.isRecording ? "Stop Audio Recording" : "Turn on audio recording"}</p>
-              </TooltipContent>
+                              <TooltipContent style={{ 
+                  fontFamily: 'Azeret Mono, monospace', 
+                  fontWeight: 400, 
+                  letterSpacing: '0.5px',
+                  backgroundColor: '#F5F5F5',
+                  color: '#333333',
+                  border: '1px solid #666666',
+                  borderRadius: '0'
+                }}>
+                  <p>{audioEnabled ? "audio enabled" : "audio disabled"}</p>
+                </TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
           <Dialog open={showVisualization} onOpenChange={setShowVisualization}>
             <DialogTrigger asChild>
               <div className="transform-gpu transition-transform duration-150 hover:translate-y-[-2px] active:translate-y-[1px]">
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <button
                   onClick={onTransform}
                   disabled={disabled}
-                  className="flex items-center gap-2 h-[28px] px-2 py-1"
+                  className="flex items-center gap-3 h-[40px] px-4 border transition-colors"
+                  style={{
+                    backgroundColor: '#F5F5F5',
+                    color: '#333333',
+                    border: '1px solid #666666',
+                    borderRadius: '0',
+                    fontFamily: 'Azeret Mono, monospace',
+                    fontWeight: 400,
+                    fontSize: '14px',
+                    letterSpacing: '0.5px'
+                  }}
                 >
-                  <div className="w-[28px] h-[28px] p-[4.4px] flex items-center justify-center">
-                    <LineChart className="h-[17px] w-[17px]" />
-                  </div>
-                  <span className="text-sm" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 400 }}>
-                    Visualize
+                  <LineChart className="h-[16px] w-[16px]" />
+                  <span>
+                    visualize
                   </span>
-                </Button>
+                </button>
               </div>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[900px] h-[700px] p-0 bg-white border-0 overflow-hidden relative fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
@@ -321,16 +353,21 @@ const SessionControls = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 330, letterSpacing: '-0.01em' }}>
+          <span className="text-xs" style={{ 
+            fontFamily: 'Azeret Mono, monospace', 
+            fontWeight: 400, 
+            letterSpacing: '0.5px',
+            color: '#333333'
+          }}>
             {isSessionActive 
-              ? "Recording in progress..." 
+              ? "recording" 
               : showCountdown && countdown > 0
-                ? `Starting in ${countdown}...`
-                : "Ready to record"
+                ? `start ${countdown}`
+                : "ready"
             }
           </span>
         </div>
-      </Card>
+      </div>
     </div>
   );
 };

@@ -151,26 +151,28 @@ const ToolboxPanel = ({
   const renderToolSection = (section: "implicit" | "explicit" | "utility") => {
     const sectionTools = tools.filter((tool) => tool.section === section);
     return (
-      <div className="flex flex-col items-center gap-[28px]">
+      <div className="flex flex-col items-center gap-[24px]">
         {sectionTools.map((tool) => (
           <Tooltip key={tool.name}>
             <TooltipTrigger asChild>
-              <div className="relative w-[28px] h-[28px] flex items-center justify-center">
-                <Button
-                  variant={activeTool === tool.name ? "secondary" : "ghost"}
-                  className="w-[28px] h-[28px] p-[4.4px]"
+              <div className="relative w-[32px] h-[32px] flex items-center justify-center">
+                <button
                   onClick={() => handleToolClick(tool.name)}
                   disabled={tool.name === "group" && !groupButtonEnabled}
+                  className="w-[32px] h-[32px] transition-colors flex items-center justify-center"
                   style={{
-                    opacity:
-                      tool.name === "group" && !groupButtonEnabled ? 0.5 : 1,
+                    backgroundColor: activeTool === tool.name ? '#333333' : 'transparent',
+                    color: activeTool === tool.name ? '#FFFFFF' : '#333333',
+                    border: 'none',
+                    borderRadius: '0',
+                    opacity: tool.name === "group" && !groupButtonEnabled ? 0.5 : 1,
                   }}
                 >
                   {tool.icon}
-                </Button>
+                </button>
                 <span
-                  className="absolute right-0 top-[20px] text-[10px] text-[#C0C0C0] font-normal select-none pointer-events-none"
-                  style={{ letterSpacing: '0.01em' }}
+                  className="absolute right-[-4px] top-[24px] text-[10px] text-[#666666] font-normal select-none pointer-events-none"
+                  style={{ letterSpacing: '0.5px', fontFamily: 'Azeret Mono, monospace' }}
                 >
                   {tool.shortcut}
                 </span>
@@ -178,18 +180,26 @@ const ToolboxPanel = ({
             </TooltipTrigger>
             <TooltipContent 
               side="right" 
-              className="max-w-[250px] text-sm" 
-              style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 300, letterSpacing: '-0.01em' }}
+              className="max-w-[250px] text-sm border-0" 
+              style={{ 
+                fontFamily: 'Azeret Mono, monospace', 
+                fontWeight: 400, 
+                letterSpacing: '0.5px',
+                backgroundColor: '#F5F5F5',
+                color: '#333333',
+                border: '1px solid #666666',
+                borderRadius: '0'
+              }}
             >
               <div>
                 <div className="font-medium mb-0.5">
-                  {tool.name.charAt(0).toUpperCase() + tool.name.slice(1)}
-                  <span className="ml-2 text-muted-foreground font-light">
+                  {tool.name}
+                  <span className="ml-2 font-normal">
                     [{tool.shortcut}]
                   </span>
                 </div>
                 {tool.description && (
-                  <p className="text-xs text-muted-foreground">{tool.description}</p>
+                  <p className="text-xs" style={{ color: '#666666' }}>{tool.description}</p>
                 )}
               </div>
             </TooltipContent>
@@ -200,12 +210,12 @@ const ToolboxPanel = ({
   };
 
   return (
-    <div className="w-[56px] bg-[#faf9f7] border border-[#b0b0b0] rounded-[12px] flex flex-col items-center py-[22px] px-[14px] gap-[20px]" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif' }}>
+    <div className="w-[80px] bg-[#F8F8F8] border border-[#666666] flex flex-col items-center py-[24px] px-[24px] gap-[24px]" style={{ fontFamily: 'Azeret Mono, monospace', borderRadius: '0' }}>
       <TooltipProvider>
         {renderToolSection("implicit")}
-        <Divider />
+        <div className="w-full h-[1px] bg-[#666666]" />
         {renderToolSection("explicit")}
-        <Divider />
+        <div className="w-full h-[1px] bg-[#666666]" />
         {renderToolSection("utility")}
       </TooltipProvider>
     </div>

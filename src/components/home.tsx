@@ -294,16 +294,16 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden" style={{ background: '#FBFAF8' }}>
-      {/* Main Content Area with Absolute Positioned Toolbox */}
+      {/* Main Content Area */}
       <div className="flex-1 flex flex-col relative">
-        {/* Toolbox Panel - Absolute Positioned */}
-        <div className="absolute top-4 left-4 z-10">
+        {/* Toolbox Panel - Hidden for now */}
+        {/* <div className="absolute top-4 left-4 z-10">
           <ToolboxPanel
             selectedTool={selectedTool}
             onToolSelect={handleToolSelect}
             selectedCount={selectedCount}
           />
-        </div>
+        </div> */}
 
         <div className="flex-1 overflow-hidden">
           <AnnotationCanvas

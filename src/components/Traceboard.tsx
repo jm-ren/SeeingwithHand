@@ -229,11 +229,12 @@ const Traceboard = ({
   }, []);
 
   return (
-    <div className="h-full border-l flex flex-col relative" style={{ 
-      background: '#FBFAF8',
-      fontFamily: 'Helvetica, Arial, sans-serif',
-      fontWeight: 300,
-      width: 'calc(24rem * 0.92)' // 24rem (w-96) * 0.92 (8% narrower)
+    <div className="h-full flex flex-col relative" style={{ 
+      background: '#F8F8F8',
+      fontFamily: 'Azeret Mono, monospace',
+      fontWeight: 400,
+      width: 'calc(24rem * 0.92)', // 24rem (w-96) * 0.92 (8% narrower)
+      borderLeft: '1px solid #666666'
     }}>
       <style>
         {`
@@ -325,17 +326,28 @@ const Traceboard = ({
         `}
       </style>
 
-      <div className="p-4 border-b flex-shrink-0">
+      <div className="p-4 flex-shrink-0" style={{ borderBottom: '1px solid #666666' }}>
         <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 500, letterSpacing: '-0.02em' }}>Interaction Timeline</h2>
+          <h2 className="text-lg font-medium" style={{ 
+            fontFamily: 'Azeret Mono, monospace', 
+            fontWeight: 500, 
+            letterSpacing: '0.5px',
+            color: '#333333'
+          }}>timeline</h2>
         </div>
-        <p className="text-xs text-muted-foreground" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', fontWeight: 330, letterSpacing: '-0.01em', marginTop: '2px' }}>
+        <p className="text-xs" style={{ 
+          fontFamily: 'Azeret Mono, monospace', 
+          fontWeight: 400, 
+          letterSpacing: '0.5px', 
+          marginTop: '4px',
+          color: '#666666'
+        }}>
           {showCountdown ? (
-            <span className="font-medium text-primary">
-              Starting in {countdown}...
+            <span style={{ color: '#333333' }}>
+              start {countdown}
             </span>
           ) : (
-            "Chronological record of annotations"
+            "interaction log"
           )}
         </p>
       </div>
@@ -374,25 +386,28 @@ const Traceboard = ({
                       animationDelay
                     }}
                   >
-                    <Card 
-                      className={"p-4 transition-all animate-slide-in hover-trace-card"}
+                    <div 
+                      className={"p-4 transition-all animate-slide-in"}
                       style={{
                         animationDelay,
                         height: '100%',
                         background: 'transparent',
-                        boxShadow: 'none',
-                        border: 'none',
                       }}
                     >
                       <div className="flex items-center gap-3">
                         <span className="inline-flex items-center justify-center">
                           {getToolIcon('hover')}
                         </span>
-                        <span className="text-sm text-muted-foreground" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', letterSpacing: '-0.01em', fontWeight: 400 }}>
-                          {gestureLabel.charAt(0).toUpperCase() + gestureLabel.slice(1)} for {durationSec} seconds
+                        <span className="text-sm" style={{ 
+                          fontFamily: 'Azeret Mono, monospace', 
+                          letterSpacing: '0.5px', 
+                          fontWeight: 400,
+                          color: '#666666'
+                        }}>
+                          {gestureLabel.toLowerCase()} {durationSec}s
                         </span>
                       </div>
-                    </Card>
+                    </div>
                   </div>
                 );
               }
@@ -405,38 +420,56 @@ const Traceboard = ({
                     animationDelay
                   }}
                 >
-                  <Card 
-                    className={`p-4 transition-all hover:translate-y-[-2px] hover:shadow-md animate-slide-in${isHover ? ' hover-trace-card' : ''}`}
+                  <div 
+                    className="p-4 transition-all animate-slide-in border"
                     style={{
                       animationDelay,
                       height: '100%',
-                      ...(isHover ? {
-                        background: 'transparent',
-                        boxShadow: 'none',
-                        border: 'none',
-                      } : {})
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #CCCCCC',
+                      borderRadius: '0',
+                      marginBottom: '2px'
                     }}
                   >
-                    <div className="flex items-start gap-2.5">
-                      <div className="bg-muted p-1.5 rounded">
+                    <div className="flex items-start gap-3">
+                      <div className="p-1" style={{ 
+                        backgroundColor: 'transparent'
+                      }}>
                         {getToolIcon(trace.type)}
                       </div>
                       <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <Badge variant="outline" className="text-xs" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', letterSpacing: '-0.01em', fontWeight: 400 }}>
-                            {trace.type.charAt(0).toUpperCase() + trace.type.slice(1)}
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs px-2 py-1 border" style={{ 
+                            fontFamily: 'Azeret Mono, monospace', 
+                            letterSpacing: '0.5px', 
+                            fontWeight: 400,
+                            backgroundColor: '#333333',
+                            color: '#FFFFFF',
+                            border: '1px solid #333333',
+                            borderRadius: '0'
+                          }}>
+                            {trace.type}
                             {trace.groupId && (
-                              <span className="ml-1 text-muted-foreground" style={{ fontWeight: 300 }}>
+                              <span className="ml-1">
                                 #{getShortGroupId(trace.groupId)}
                               </span>
                             )}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground flex items-center gap-1" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', letterSpacing: '-0.01em', fontWeight: 300 }}>
-                            <Clock className="h-3 w-3" />
+                          </span>
+                          <span className="text-xs flex items-center gap-1" style={{ 
+                            fontFamily: 'Azeret Mono, monospace', 
+                            letterSpacing: '0.5px', 
+                            fontWeight: 400,
+                            color: '#666666'
+                          }}>
                             {trace.timestamp}
                           </span>
                         </div>
-                        <p className="text-xs mt-1 text-muted-foreground" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif', letterSpacing: '-0.01em', fontWeight: 300 }}>
+                        <p className="text-xs mt-1" style={{ 
+                          fontFamily: 'Azeret Mono, monospace', 
+                          letterSpacing: '0.5px', 
+                          fontWeight: 400,
+                          color: '#666666'
+                        }}>
                           {trace.type === 'freehand' 
                             ? formatFreehandTrace(trace.coordinates)
                             : trace.type === 'hover'
@@ -444,13 +477,21 @@ const Traceboard = ({
                               : trace.coordinates}
                         </p>
                         {trace.gestureType && (
-                          <Badge variant="secondary" className="ml-2 text-xs lowercase" style={{ fontWeight: 400 }}>
+                          <span className="text-xs px-2 py-1 border mt-2 inline-block" style={{ 
+                            fontFamily: 'Azeret Mono, monospace',
+                            fontWeight: 400,
+                            backgroundColor: '#F5F5F5',
+                            color: '#000000',
+                            border: '1px solid #CCCCCC',
+                            borderRadius: '0',
+                            letterSpacing: '0.5px'
+                          }}>
                             {trace.gestureType}
-                          </Badge>
+                          </span>
                         )}
                       </div>
                     </div>
-                  </Card>
+                  </div>
                 </div>
               );
             })}
@@ -459,14 +500,23 @@ const Traceboard = ({
 
       {/* Jump to Latest button - only show when not at bottom */}
       {showScrollButton && (
-        <Button
-          className="absolute bottom-4 right-4 shadow-md flex items-center gap-1"
-          size="sm"
+        <button
+          className="absolute bottom-4 right-4 flex items-center gap-2 px-3 py-2 border transition-colors"
           onClick={scrollToBottom}
+          style={{
+            backgroundColor: '#333333',
+            color: '#FFFFFF',
+            border: '1px solid #333333',
+            borderRadius: '0',
+            fontFamily: 'Azeret Mono, monospace',
+            fontWeight: 400,
+            fontSize: '12px',
+            letterSpacing: '0.5px'
+          }}
         >
-          <ArrowDown className="h-4 w-4" />
-          Jump to Latest
-        </Button>
+          <ArrowDown className="h-3 w-3" />
+          latest
+        </button>
       )}
     </div>
   );
