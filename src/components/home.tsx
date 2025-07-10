@@ -8,6 +8,7 @@ import { useAnnotations } from "../context/AnnotationContext";
 import { Annotation } from "../types/annotations";
 import { processTracesForDisplay } from "../lib/utils";
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
+import { appSettings } from "../config/appConfig";
 
 type Tool =
   | "point"
@@ -181,7 +182,7 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
         // Draw annotations
         annotations.forEach((annotation) => {
           ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
-          ctx.lineWidth = 2;
+          ctx.lineWidth = appSettings.canvas.lineWidth;
 
           switch (annotation.type) {
             case "point":
@@ -190,7 +191,7 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
                 ctx.arc(
                   annotation.points[0].x,
                   annotation.points[0].y,
-                  5,
+                  appSettings.canvas.pointRadius,
                   0,
                   Math.PI * 2
                 );

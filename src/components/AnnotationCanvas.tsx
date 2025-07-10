@@ -10,6 +10,7 @@ import { Undo2 } from "lucide-react";
 import { useAnnotations } from "../context/AnnotationContext";
 import { useSession } from "../context/SessionContext";
 import { Point, Annotation, Tool, Group } from "../types/annotations";
+import { appSettings } from "../config/appConfig";
 
 interface AnnotationCanvasProps {
   imageUrl?: string;
@@ -185,13 +186,28 @@ const AnnotationCanvas = ({
     
     if (!canvas || !container || !imageRef.current || !imageDimensions) return;
     
-    // Set canvas dimensions to match container
-    canvas.width = container.clientWidth;
-    canvas.height = container.clientHeight;
+    // Get device pixel ratio for crisp rendering
+    const dpr = window.devicePixelRatio || 1;
+    const displayWidth = container.clientWidth;
+    const displayHeight = container.clientHeight;
+    
+    // Set canvas internal resolution (scaled for device pixel ratio)
+    canvas.width = displayWidth * dpr;
+    canvas.height = displayHeight * dpr;
+    
+    // Set canvas display size (CSS size)
+    canvas.style.width = displayWidth + 'px';
+    canvas.style.height = displayHeight + 'px';
+    
+    // Scale the drawing context so everything draws at the correct size
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.scale(dpr, dpr);
+    }
     
     // Calculate proper scaling to maintain aspect ratio
-    const containerWidth = canvas.width;
-    const containerHeight = canvas.height;
+    const containerWidth = displayWidth;
+    const containerHeight = displayHeight;
     const imageAspectRatio = imageDimensions.width / imageDimensions.height;
     const containerAspectRatio = containerWidth / containerHeight;
     
@@ -251,7 +267,7 @@ const AnnotationCanvas = ({
     isFilled: boolean = false, 
     fillColor: string = "rgba(0, 0, 0, 0.1)",
     strokeColor: string = "rgba(0, 0, 0, 0.5)",
-    lineWidth: number = 2,
+    lineWidth: number = appSettings.canvas.lineWidth,
     isPreviewMode: boolean = false
   ) => {
     if (points.length < 1) return;
@@ -337,7 +353,7 @@ const AnnotationCanvas = ({
 
         // Draw group border
         ctx.strokeStyle = "rgba(100, 100, 255, 0.5)";
-        ctx.lineWidth = 2;
+        ctx.lineWidth = appSettings.canvas.lineWidth;
         ctx.strokeRect(
           minX - 10,
           minY - 10,
@@ -352,7 +368,7 @@ const AnnotationCanvas = ({
         // Determine if this annotation is selected based on selectedAnnotations
         const isSelected = selectedAnnotations.includes(annotation.id);
         const strokeColor = isSelected ? "rgba(0, 0, 255, 0.5)" : "rgba(0, 0, 0, 0.5)";
-        const lineWidth = isSelected ? 3 : 2;
+        const lineWidth = isSelected ? appSettings.canvas.selectionLineWidth : appSettings.canvas.lineWidth;
         const fillColor = isSelected ? "rgba(0, 0, 255, 0.1)" : "rgba(0, 0, 0, 0.1)";
 
         switch (annotation.type) {
@@ -375,7 +391,7 @@ const AnnotationCanvas = ({
               ctx.arc(
                 annotation.points[0].x,
                 annotation.points[0].y,
-                5,
+                appSettings.canvas.pointRadius,
                 0,
                 Math.PI * 2,
               );
@@ -465,12 +481,12 @@ const AnnotationCanvas = ({
               ctx.arc(
                 currentAnnotation[0].x,
                 currentAnnotation[0].y,
-                5,
+                appSettings.canvas.pointRadius,
                 0,
                 Math.PI * 2
               );
               ctx.strokeStyle = "rgba(221, 70, 39, 0.5)";
-              ctx.lineWidth = 2;
+              ctx.lineWidth = appSettings.canvas.lineWidth;
               ctx.stroke();
             }
             break;
@@ -480,14 +496,14 @@ const AnnotationCanvas = ({
               ctx.moveTo(currentAnnotation[0].x, currentAnnotation[0].y);
               ctx.lineTo(tempMousePos.x, tempMousePos.y);
               ctx.strokeStyle = "rgba(221, 70, 39, 0.5)";
-              ctx.lineWidth = 2;
+              ctx.lineWidth = appSettings.canvas.lineWidth;
               ctx.stroke();
             } else if (currentAnnotation[0] && currentAnnotation[1]) {
               ctx.beginPath();
               ctx.moveTo(currentAnnotation[0].x, currentAnnotation[0].y);
               ctx.lineTo(currentAnnotation[1].x, currentAnnotation[1].y);
               ctx.strokeStyle = "rgba(221, 70, 39, 0.5)";
-              ctx.lineWidth = 2;
+              ctx.lineWidth = appSettings.canvas.lineWidth;
               ctx.stroke();
             }
             break;
@@ -501,7 +517,7 @@ const AnnotationCanvas = ({
                 false, 
                 "rgba(0, 0, 0, 0.1)", 
                 "rgba(221, 70, 39, 0.5)", 
-                2,
+                appSettings.canvas.lineWidth,
                 true
               );
               
@@ -511,7 +527,7 @@ const AnnotationCanvas = ({
                 ctx.beginPath();
                 ctx.arc(currentAnnotation[0].x, currentAnnotation[0].y, 10, 0, Math.PI * 2);
                 ctx.strokeStyle = "rgba(0, 255, 0, 0.8)";
-                ctx.lineWidth = 2;
+                ctx.lineWidth = appSettings.canvas.lineWidth;
                 ctx.stroke();
               }
             } 
@@ -520,7 +536,7 @@ const AnnotationCanvas = ({
               const width = currentAnnotation[1].x - currentAnnotation[0].x;
               const height = currentAnnotation[1].y - currentAnnotation[0].y;
               ctx.strokeStyle = "rgba(221, 70, 39, 0.5)";
-              ctx.lineWidth = 2;
+              ctx.lineWidth = appSettings.canvas.lineWidth;
               ctx.strokeRect(
                 currentAnnotation[0].x,
                 currentAnnotation[0].y,
@@ -539,7 +555,7 @@ const AnnotationCanvas = ({
                 true, 
                 "rgba(221, 70, 39, 0.1)", 
                 "rgba(221, 70, 39, 0.5)", 
-                2,
+                appSettings.canvas.lineWidth,
                 true
               );
               
@@ -549,7 +565,7 @@ const AnnotationCanvas = ({
                 ctx.beginPath();
                 ctx.arc(currentAnnotation[0].x, currentAnnotation[0].y, 10, 0, Math.PI * 2);
                 ctx.strokeStyle = "rgba(0, 255, 0, 0.8)";
-                ctx.lineWidth = 2;
+                ctx.lineWidth = appSettings.canvas.lineWidth;
                 ctx.stroke();
               }
             } 
@@ -565,7 +581,7 @@ const AnnotationCanvas = ({
                 height
               );
               ctx.strokeStyle = "rgba(221, 70, 39, 0.5)";
-              ctx.lineWidth = 2;
+              ctx.lineWidth = appSettings.canvas.lineWidth;
               ctx.strokeRect(
                 currentAnnotation[0].x,
                 currentAnnotation[0].y,
@@ -582,7 +598,7 @@ const AnnotationCanvas = ({
                 ctx.lineTo(point.x, point.y);
               });
               ctx.strokeStyle = "rgba(221, 70, 39, 0.5)";
-              ctx.lineWidth = 2;
+              ctx.lineWidth = appSettings.canvas.lineWidth;
               ctx.stroke();
             }
             break;
@@ -600,7 +616,7 @@ const AnnotationCanvas = ({
       ctx.beginPath();
       ctx.arc(currentTrace[0].x, currentTrace[0].y, dwellRadius, 0, Math.PI * 2);
       ctx.strokeStyle = "rgba(221, 70, 39, 0.8)";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = appSettings.canvas.lineWidth;
       ctx.stroke();
       ctx.fillStyle = "rgba(221, 70, 39, 0.15)";
       ctx.fill();
@@ -613,7 +629,7 @@ const AnnotationCanvas = ({
         ctx.lineTo(currentTrace[i].x, currentTrace[i].y);
       }
       ctx.strokeStyle = "rgba(221, 70, 39, 0.8)";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = appSettings.canvas.lineWidth;
       ctx.stroke();
     }
     // Draw hover trace (faint, beautifully fading)
@@ -626,7 +642,7 @@ const AnnotationCanvas = ({
         ctx.lineTo(hoverTrace[i].x, hoverTrace[i].y);
       }
       ctx.strokeStyle = "#222";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = appSettings.canvas.lineWidth;
       ctx.shadowColor = "#222";
       ctx.shadowBlur = 6;
       ctx.stroke();

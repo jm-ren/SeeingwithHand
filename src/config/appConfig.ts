@@ -30,9 +30,9 @@ export const appSettings = {
     defaultImageUrl: "https://images2.dwell.com/photos/6133553759298379776/6297915443342360576/original.jpg?auto=format&q=35&w=1600",
     defaultColor: "#DD4627",
     selectionColor: "#4285F4",
-    pointRadius: 4,
-    lineWidth: 2,
-    selectionLineWidth: 3,
+    pointRadius: 8,
+    lineWidth: 5,
+    selectionLineWidth: 7,
   },
   
   // Session settings
@@ -58,9 +58,9 @@ export const appSettings = {
 
 // Environment-specific configuration
 export const environmentConfig = {
-  isDevelopment: process.env.NODE_ENV === "development",
-  isProduction: process.env.NODE_ENV === "production",
-  apiBaseUrl: process.env.API_BASE_URL || "https://api.example.com",
+  isDevelopment: typeof process !== 'undefined' && process.env?.NODE_ENV === "development",
+  isProduction: typeof process !== 'undefined' && process.env?.NODE_ENV === "production",
+  apiBaseUrl: (typeof process !== 'undefined' && process.env?.API_BASE_URL) || "https://api.example.com",
 };
 
 // Export a combined configuration object
