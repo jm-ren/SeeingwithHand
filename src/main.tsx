@@ -12,7 +12,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter basename={basename}>
       <Routes>
-        <Route path="/" element={<GalleryPage />} />
+        <Route path="/" element={<SessionPage />} />
+        <Route path="/gallery" element={<GalleryPage />} />
         <Route path="/session/:imageId/:sessionId" element={<SessionPage />} />
       </Routes>
     </BrowserRouter>
