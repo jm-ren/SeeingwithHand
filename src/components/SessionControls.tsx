@@ -149,7 +149,7 @@ const SessionControls = ({
                   <button
                     onClick={handleStartStop}
                     disabled={disabled}
-                    className="flex items-center gap-3 h-[40px] px-4 border transition-colors"
+                    className="flex items-center gap-2 h-[40px] px-6 border transition-colors"
                     style={{
                       backgroundColor: isSessionActive ? '#333333' : '#F5F5F5',
                       color: isSessionActive ? '#FFFFFF' : '#333333',
@@ -161,11 +161,11 @@ const SessionControls = ({
                       letterSpacing: '0.5px'
                     }}
                   >
-                    <div className="w-[28px] h-[28px] p-[4.4px] flex items-center justify-center">
+                    <div className="w-[20px] h-[20px] flex items-center justify-center">
                       {isSessionActive ? (
-                        <StopCircle className="h-[17px] w-[17px]" />
+                        <StopCircle className="h-[16px] w-[16px]" />
                       ) : (
-                        <PlayCircle className="h-[17px] w-[17px]" />
+                        <PlayCircle className="h-[16px] w-[16px]" />
                       )}
                     </div>
                     <span>
@@ -207,7 +207,7 @@ const SessionControls = ({
                       }
                     }}
                     disabled={disabled}
-                    className="flex items-center gap-3 h-[40px] px-4 border transition-colors"
+                    className="flex items-center gap-2 h-[40px] px-6 border transition-colors"
                     style={{
                       backgroundColor: audioEnabled ? '#333333' : '#F5F5F5',
                       color: audioEnabled ? '#FFFFFF' : '#333333',
@@ -219,11 +219,11 @@ const SessionControls = ({
                       letterSpacing: '0.5px'
                     }}
                   >
-                    <div className="w-[28px] h-[28px] p-[4.4px] flex items-center justify-center">
+                    <div className="w-[20px] h-[20px] flex items-center justify-center">
                       {audioEnabled ? (
-                        <Mic className="h-[17px] w-[17px]" />
+                        <Mic className="h-[16px] w-[16px]" />
                       ) : (
-                        <MicOff className="h-[17px] w-[17px]" />
+                        <MicOff className="h-[16px] w-[16px]" />
                       )}
                     </div>
                     <span>
@@ -255,7 +255,7 @@ const SessionControls = ({
                 <button
                   onClick={onTransform}
                   disabled={disabled}
-                  className="flex items-center gap-3 h-[40px] px-4 border transition-colors"
+                  className="flex items-center gap-2 h-[40px] px-6 border transition-colors"
                   style={{
                     backgroundColor: '#F5F5F5',
                     color: '#333333',
@@ -267,7 +267,9 @@ const SessionControls = ({
                     letterSpacing: '0.5px'
                   }}
                 >
-                  <LineChart className="h-[16px] w-[16px]" />
+                  <div className="w-[20px] h-[20px] flex items-center justify-center">
+                    <LineChart className="h-[16px] w-[16px]" />
+                  </div>
                   <span>
                     visualize
                   </span>
