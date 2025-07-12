@@ -39,17 +39,29 @@ const PrepareSessionPanel: React.FC<{ image: any; onStart: () => void }> = ({ im
       }}>
         {image.title}
       </div>
-      <img 
-        src={image.thumbnail} 
-        alt={image.title} 
-        style={{ 
-          width: '100%', 
-          maxWidth: 320, 
-          borderRadius: '0',
-          border: '1px solid #666666',
-          margin: '16px 0' 
-        }} 
-      />
+      <div style={{ 
+        width: '100%', 
+        maxHeight: 400,
+        background: '#FFFFFF',
+        border: '1px solid #CCCCCC',
+        borderRadius: '0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        margin: '16px 0' 
+      }}>
+        <img 
+          src={image.thumbnail} 
+          alt={image.title} 
+          style={{ 
+            width: '100%',
+            maxHeight: 400,
+            objectFit: 'contain',
+            display: 'block',
+            border: 'none'
+          }} 
+        />
+      </div>
       <p style={{ 
         fontFamily: 'Azeret Mono, monospace',
         color: '#666666', 
@@ -100,12 +112,12 @@ const GalleryDetailPanel: React.FC<GalleryDetailPanelProps> = ({ hovered, select
   if (!display || !display.image) {
     return (
       <div style={{ 
-        width: 645, 
-        minWidth: 645, 
-        maxWidth: 645, 
+        flex: '1 1 50%', 
+        maxWidth: '1032px',
+        minWidth: '400px',
         padding: 36, 
-        background: '#FFFFFF', 
-        height: '100vh', 
+        background: '#FBFAF8', 
+        height: '100%', 
         overflowY: 'auto',
         fontFamily: 'Azeret Mono, monospace',
         color: '#666666', 
@@ -128,12 +140,12 @@ const GalleryDetailPanel: React.FC<GalleryDetailPanelProps> = ({ hovered, select
     };
     return (
       <div style={{ 
-        width: 645, 
-        minWidth: 645, 
-        maxWidth: 645, 
+        flex: '1 1 50%', 
+        maxWidth: '1032px',
+        minWidth: '400px',
         padding: 36, 
-        background: '#FFFFFF', 
-        height: '100vh', 
+        background: '#FBFAF8', 
+        height: '100%', 
         overflowY: 'auto' 
       }}>
         <PrepareSessionPanel image={display.image} onStart={handleStart} />
@@ -145,12 +157,12 @@ const GalleryDetailPanel: React.FC<GalleryDetailPanelProps> = ({ hovered, select
   if (inSession) {
     return (
       <div style={{ 
-        width: 645, 
-        minWidth: 645, 
-        maxWidth: 645, 
+        flex: '1 1 50%', 
+        maxWidth: '1032px',
+        minWidth: '400px',
         padding: 36, 
-        background: '#FFFFFF', 
-        height: '100vh', 
+        background: '#FBFAF8', 
+        height: '100%', 
         overflowY: 'auto' 
       }}>
         <div style={{ 
@@ -178,12 +190,12 @@ const GalleryDetailPanel: React.FC<GalleryDetailPanelProps> = ({ hovered, select
 
   return (
     <div style={{ 
-      width: 645, 
-      minWidth: 645, 
-      maxWidth: 645, 
+      flex: '1 1 50%', 
+      maxWidth: '1032px',
+      minWidth: '400px',
       padding: 36, 
-      background: '#FFFFFF', 
-      height: '100vh', 
+      background: '#FBFAF8', 
+      height: '100%', 
       overflowY: 'auto' 
     }}>
       <div style={{ 
@@ -196,17 +208,29 @@ const GalleryDetailPanel: React.FC<GalleryDetailPanelProps> = ({ hovered, select
       }}>
         {display.image.title}
       </div>
-      <img
-        src={display.image.thumbnail}
-        alt={display.image.title}
-        style={{ 
-          width: '100%', 
-          maxWidth: 400, 
-          borderRadius: '0',
-          border: '1px solid #666666',
-          marginBottom: 24 
-        }}
-      />
+      <div style={{ 
+        width: '100%', 
+        maxHeight: 400,
+        background: '#FFFFFF',
+        border: '1px solid #CCCCCC',
+        borderRadius: '0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        marginBottom: 24 
+      }}>
+        <img
+          src={display.image.thumbnail}
+          alt={display.image.title}
+          style={{ 
+            width: '100%', 
+            maxHeight: 400,
+            objectFit: 'contain',
+            display: 'block',
+            border: 'none'
+          }}
+        />
+      </div>
       {display.session ? (
         <div style={{ marginBottom: 16 }}>
           <div style={{ 

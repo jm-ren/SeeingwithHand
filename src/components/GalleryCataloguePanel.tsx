@@ -10,13 +10,13 @@ const mockImages = [
   },
   {
     id: 'img2',
-    title: 'Morandi Landscape Cottage',
-    thumbnail: '/images/image 003_morandi_landscape_cottage.png',
+    title: 'Villa Savoye',
+    thumbnail: '/images/image 001_villa savoye.png',
   },
   {
     id: 'img3',
-    title: 'Villa Savoye',
-    thumbnail: '/images/image 001_villa savoye.png',
+    title: 'Morandi Landscape Cottage',
+    thumbnail: '/images/image 003_morandi_landscape_cottage.png',
   },
   {
     id: 'img4',
@@ -75,12 +75,12 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
   if (loading) {
     return (
       <div style={{ 
-        width: 650, 
-        minWidth: 650, 
-        maxWidth: 650, 
-        padding: 24, 
+        flex: '1 1 50%', 
+        maxWidth: '1040px',
+        minWidth: '400px',
+        padding: 36, 
         background: '#FBFAF8', 
-        height: '100vh', 
+        height: '100%', 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
@@ -97,14 +97,14 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
 
   return (
     <div style={{ 
-      width: 650, 
-      minWidth: 650, 
-      maxWidth: 650, 
+      flex: '1 1 50%', 
+      maxWidth: '1040px',
+      minWidth: '400px',
       overflowY: 'auto', 
-      borderRight: '1px solid #666666', 
-      padding: 24, 
+      borderRight: '1px solid #CCCCCC', 
+      padding: 36, 
       background: '#FBFAF8', 
-      height: '100vh',
+      height: '100%',
       fontFamily: 'Azeret Mono, monospace'
     }}>
       {mockImages.map((img) => {
@@ -114,11 +114,11 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
           <div key={img.id} style={{ marginBottom: 48 }}>
             <div
               style={{
-                width: 'calc(100% - 32px)',
-                height: 'calc((100% - 32px) * 3 / 4)',
-                margin: '0 16px 8px 16px',
+                width: '100%',
+                height: 'calc(100% * 3 / 4)',
+                margin: '0 0 8px 0',
                 background: '#FFFFFF',
-                border: '1px solid #666666',
+                border: '1px solid #CCCCCC',
                 borderRadius: '0',
                 display: 'flex',
                 alignItems: 'center',
@@ -132,7 +132,7 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
               <img
                 src={img.thumbnail}
                 alt={img.title}
-                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }}
+                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block', border: 'none' }}
               />
             </div>
             <div style={{ 
@@ -153,7 +153,7 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
                   style={{
                     padding: '8px 16px',
                     background: '#FFFFFF',
-                    border: '1px solid #666666',
+                    border: '1px solid #CCCCCC',
                     borderRadius: '0',
                     cursor: 'pointer',
                     fontSize: '12px',

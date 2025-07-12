@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Home from './components/home';
-import { AnnotationProvider, useAnnotations } from './context/AnnotationContext';
-import { SessionProvider, useSession } from './context/SessionContext';
+import { ApplicationProvider, useApplication } from './context/ApplicationContext';
 import SessionSurveyPage from './SessionSurveyPage';
 import { saveSession, uploadAudioFile } from './lib/supabase';
 import SessionReplay from './components/SessionReplay';
@@ -12,11 +11,9 @@ const SessionPage: React.FC = () => {
   const { imageId, sessionId } = useParams<{ imageId: string; sessionId: string }>();
 
   return (
-    <SessionProvider>
-      <AnnotationProvider>
-        <SessionPageContent imageId={imageId} sessionId={sessionId} />
-      </AnnotationProvider>
-    </SessionProvider>
+    <ApplicationProvider>
+      <SessionPageContent imageId={imageId} sessionId={sessionId} />
+    </ApplicationProvider>
   );
 };
 
@@ -26,8 +23,7 @@ const SessionPageContent: React.FC<{ imageId?: string; sessionId?: string }> = (
   const [sessionSummary, setSessionSummary] = useState<{ sessionName: string; imageUrl: string; audioUrl?: string; audioBlob?: Blob } | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showReplay, setShowReplay] = useState(false);
-  const { annotations, groups } = useAnnotations();
-  const { sessionId: sessionIdFromContext, endSession } = useSession();
+  const { annotations, groups, sessionId: sessionIdFromContext, endSession } = useApplication();
   const navigate = useNavigate();
 
   // Handler to trigger survey after session ends

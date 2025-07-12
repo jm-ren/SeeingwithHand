@@ -51,7 +51,7 @@ const ImageGallery: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                border: '1px solid #666666',
+                border: '1px solid #CCCCCC',
                 borderRadius: '0',
                 marginBottom: 8,
               }}
@@ -64,6 +64,7 @@ const ImageGallery: React.FC = () => {
                   maxHeight: '100%',
                   objectFit: 'contain',
                   display: 'block',
+                  border: 'none',
                 }}
               />
             </div>

@@ -5,17 +5,32 @@ import "./index.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import GalleryPage from "./GalleryPage";
 import SessionPage from "./SessionPage";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const basename = import.meta.env.BASE_URL;
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <BrowserRouter basename={basename}>
-      <Routes>
-        <Route path="/" element={<SessionPage />} />
-        <Route path="/gallery" element={<GalleryPage />} />
-        <Route path="/session/:imageId/:sessionId" element={<SessionPage />} />
-      </Routes>
-    </BrowserRouter>
+    <ErrorBoundary context="Application Root">
+      <BrowserRouter basename={basename}>
+        <Routes>
+          <Route path="/" element={
+            <ErrorBoundary context="Gallery Page">
+              <GalleryPage />
+            </ErrorBoundary>
+          } />
+          <Route path="/gallery" element={
+            <ErrorBoundary context="Gallery Page">
+              <GalleryPage />
+            </ErrorBoundary>
+          } />
+          <Route path="/session/:imageId/:sessionId" element={
+            <ErrorBoundary context="Session Page">
+              <SessionPage />
+            </ErrorBoundary>
+          } />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   </React.StrictMode>,
 );

@@ -1,10 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
-import AnnotationCanvas from "./AnnotationCanvas";
+import AnnotationCanvasRefactored from "./AnnotationCanvasRefactored";
 import ToolboxPanel from "./ToolboxPanel";
 import SessionControls from "./SessionControls";
 import Traceboard from "./Traceboard";
-import { useSession } from "../context/SessionContext";
-import { useAnnotations } from "../context/AnnotationContext";
+import { useApplication } from "../context/ApplicationContext";
 import { Annotation } from "../types/annotations";
 import { processTracesForDisplay } from "../lib/utils";
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
@@ -63,8 +62,17 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
     useState<HTMLCanvasElement | null>(null);
     
   // Use contexts - get countdown and session state from context
-  const { isSessionActive, countdown, showCountdown } = useSession();
-  const { resetSession, annotations, selectedTool: contextSelectedTool, setSelectedTool: setContextSelectedTool, selectedCount: contextSelectedCount, selectedColor } = useAnnotations();
+  const { 
+    isSessionActive, 
+    countdown, 
+    showCountdown, 
+    resetSession, 
+    annotations, 
+    selectedTool: contextSelectedTool, 
+    setSelectedTool: setContextSelectedTool, 
+    selectedCount: contextSelectedCount, 
+    selectedColor 
+  } = useApplication();
   const audio = useAudioRecorder();
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [currentSessionName, setCurrentSessionName] = useState<string | null>(null);
@@ -294,7 +302,7 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
         </div> */}
 
         <div className="flex-1 overflow-hidden">
-          <AnnotationCanvas
+          <AnnotationCanvasRefactored
             imageUrl={imageUrl}
             selectedTool={selectedTool}
             onAnnotationChange={handleAnnotationChange}
