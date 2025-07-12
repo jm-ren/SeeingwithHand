@@ -78,7 +78,7 @@ const PrepareSessionPanel: React.FC<{ image: any; onStart: () => void }> = ({ im
     <button
       style={{
         padding: '12px 32px',
-        background: '#DD4627',
+        background: '#666666',
         color: '#FFFFFF',
         border: '1px solid #666666',
         borderRadius: '0',
@@ -91,10 +91,10 @@ const PrepareSessionPanel: React.FC<{ image: any; onStart: () => void }> = ({ im
         transition: 'all 0.2s ease'
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = '#B73A20';
+        e.currentTarget.style.backgroundColor = '#333333';
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = '#DD4627';
+        e.currentTarget.style.backgroundColor = '#666666';
       }}
       onClick={onStart}
     >

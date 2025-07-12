@@ -17,10 +17,10 @@ const Header: React.FC = () => {
         padding: '0 20px'
       }}>
         <img 
-          src="/co-see logo with text.svg" 
+          src="/co-see-horizontal logo.svg" 
           alt="Co-See Logo" 
           style={{
-            height: '40px',
+            height: '20px',
             objectFit: 'contain'
           }}
         />
