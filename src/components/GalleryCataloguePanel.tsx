@@ -83,14 +83,9 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
         height: '100%', 
         display: 'flex', 
         alignItems: 'center', 
-        justifyContent: 'center',
-        fontFamily: 'Azeret Mono, monospace',
-        fontSize: '14px',
-        fontWeight: 400,
-        letterSpacing: '0.5px',
-        color: '#333333'
+        justifyContent: 'center'
       }}>
-        <div>Loading sessions...</div>
+        <div className="gallery-text-body">Loading sessions...</div>
       </div>
     );
   }
@@ -104,8 +99,7 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
       borderRight: '1px solid #CCCCCC', 
       padding: 36, 
       background: '#FBFAF8', 
-      height: '100%',
-      fontFamily: 'Azeret Mono, monospace'
+      height: '100%'
     }}>
       {mockImages.map((img) => {
         const sessions = imageSessions[img.id] || [];
@@ -117,31 +111,19 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
                 width: '100%',
                 height: 'calc(100% * 3 / 4)',
                 margin: '0 0 8px 0',
-                background: '#FFFFFF',
-                border: '1px solid #CCCCCC',
-                borderRadius: '0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-start',
                 cursor: 'pointer',
                 boxShadow: locked?.imageId === img.id && !locked.sessionId ? '0 0 0 2px #333333' : undefined,
               }}
+              className="gallery-image-container"
               onMouseEnter={() => handleHover(img)}
               onClick={() => handleClick(img)}
             >
               <img
                 src={img.thumbnail}
                 alt={img.title}
-                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block', border: 'none' }}
               />
             </div>
-            <div style={{ 
-              fontFamily: 'Azeret Mono, monospace',
-              fontWeight: 500,
-              fontSize: '14px',
-              letterSpacing: '0.5px',
-              color: '#333333'
-            }}>
+            <div className="gallery-title-sub">
               {img.title}
             </div>
             
@@ -156,18 +138,14 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
                     border: '1px solid #CCCCCC',
                     borderRadius: '0',
                     cursor: 'pointer',
-                    fontSize: '12px',
-                    fontFamily: 'Azeret Mono, monospace',
-                    fontWeight: 400,
-                    letterSpacing: '0.5px',
-                    color: '#333333',
                     boxShadow: locked?.imageId === img.id && locked.sessionId === session.id ? '0 0 0 2px #333333' : undefined,
                   }}
+                  className="gallery-text-small"
                   onMouseEnter={() => handleHover(img, session)}
                   onClick={() => handleClick(img, session)}
                 >
-                  {session.session_name} 
-                  <span style={{ color: '#666666', fontSize: '11px' }}>
+                  <span>{session.session_name}</span>
+                  <span style={{ color: '#666666', fontSize: '0.9em' }}>
                     ({session.survey_data?.nickname || 'anonymous'})
                   </span>
                 </div>
@@ -176,26 +154,7 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
             
             <div style={{ marginTop: 16 }}>
               <button
-                style={{
-                  padding: '12px 24px',
-                  background: '#666666',
-                  color: '#FFFFFF',
-                  border: '1px solid #666666',
-                  borderRadius: '0',
-                  fontFamily: 'Azeret Mono, monospace',
-                  fontWeight: 500,
-                  fontSize: '14px',
-                  letterSpacing: '0.5px',
-                  cursor: 'pointer',
-                  marginTop: 8,
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#333333';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#666666';
-                }}
+                className="gallery-button gallery-button-text"
                 onClick={() => handleClick(img, { id: 'new', name: 'start session' })}
               >
                 start session
