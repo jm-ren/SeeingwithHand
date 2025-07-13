@@ -67,7 +67,9 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
     selectedTool, 
     setSelectedTool, 
     selectedCount: contextSelectedCount, 
-    selectedColor 
+    selectedColor,
+    isToolbarVisible,
+    setToolbarVisible
   } = useApplication();
   const audio = useAudioRecorder();
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -91,6 +93,72 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
       setCurrentSessionName(null);
     }
   }, [isSessionActive, imageId, currentSessionId]);
+
+  // Keyboard shortcut handler for toolbar toggle
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Tab key to toggle toolbar (prevent default tab behavior)
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        setToolbarVisible(!isToolbarVisible);
+      }
+    };
+
+    // Add event listener to document
+    document.addEventListener('keydown', handleKeyDown);
+    
+    // Cleanup on unmount
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isToolbarVisible, setToolbarVisible]);
+
+  // Touch handler for iPad - double tap in top-left corner to toggle toolbar
+  useEffect(() => {
+    let touchCount = 0;
+    let touchTimeout: NodeJS.Timeout;
+    
+    const handleTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (!touch) return;
+      
+      // Define a corner area (100x100 pixels from top-left)
+      const cornerSize = 100;
+      const isInCorner = touch.clientX <= cornerSize && touch.clientY <= cornerSize;
+      
+      if (isInCorner) {
+        touchCount++;
+        
+        // Clear existing timeout
+        if (touchTimeout) {
+          clearTimeout(touchTimeout);
+        }
+        
+        // If double tap detected within 300ms
+        if (touchCount === 2) {
+          e.preventDefault();
+          setToolbarVisible(!isToolbarVisible);
+          touchCount = 0;
+        } else {
+          // Reset counter after 300ms if no second tap
+          touchTimeout = setTimeout(() => {
+            touchCount = 0;
+          }, 300);
+        }
+      }
+    };
+
+    // Add touch event listener
+    document.addEventListener('touchstart', handleTouchStart);
+    
+    // Cleanup on unmount
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      if (touchTimeout) {
+        clearTimeout(touchTimeout);
+      }
+    };
+  }, [isToolbarVisible, setToolbarVisible]);
 
   // Initialize visualization canvas
   useEffect(() => {
@@ -290,11 +358,35 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
       <div className="flex-1 flex flex-col relative">
         {/* Toolbox Panel */}
         <div className="absolute top-4 left-4 z-10">
-          <ToolboxPanel
-            selectedTool={selectedTool}
-            onToolSelect={handleToolSelect}
-            selectedCount={selectedCount}
-          />
+          <div 
+            className="flex flex-col items-center"
+            style={{
+              transform: isToolbarVisible ? 'translateX(0)' : 'translateX(-100%)',
+              transition: 'transform 0.3s ease-in-out',
+              opacity: isToolbarVisible ? 1 : 0,
+            }}
+          >
+            <ToolboxPanel
+              selectedTool={selectedTool}
+              onToolSelect={handleToolSelect}
+              selectedCount={selectedCount}
+              isVisible={true}
+            />
+            
+            {/* Hide button aligned underneath toolbar */}
+            <button
+              onClick={() => setToolbarVisible(false)}
+              className="w-[80px] bg-[#F8F8F8] border border-[#666666] border-t-0 text-[10px] text-[#666666] py-2 flex items-center justify-center hover:bg-[#EEEEEE] transition-colors duration-150"
+              style={{ 
+                fontFamily: 'Azeret Mono, monospace',
+                letterSpacing: '0.5px',
+                borderRadius: '0',
+                outline: 'none',
+              }}
+            >
+              hide
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-hidden">

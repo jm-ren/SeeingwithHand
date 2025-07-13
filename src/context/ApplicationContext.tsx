@@ -21,6 +21,7 @@ export interface ApplicationState {
   
   // UI state
   isRecording: boolean;
+  isToolbarVisible: boolean;
   
   // Derived state
   traces: TraceItem[];
@@ -58,6 +59,7 @@ type ApplicationAction =
   | { type: 'SET_COUNTDOWN'; payload: number }
   | { type: 'SET_SHOW_COUNTDOWN'; payload: boolean }
   | { type: 'SET_RECORDING'; payload: boolean }
+  | { type: 'SET_TOOLBAR_VISIBLE'; payload: boolean }
   | { type: 'RESET_SESSION' };
 
 // === Context Interface === //
@@ -82,6 +84,7 @@ interface ApplicationContextType {
   setCountdown: (count: number) => void;
   setShowCountdown: (show: boolean) => void;
   setRecording: (recording: boolean) => void;
+  setToolbarVisible: (visible: boolean) => void;
   resetSession: () => void;
   
   // Derived data
@@ -97,6 +100,7 @@ interface ApplicationContextType {
   countdown: number;
   showCountdown: boolean;
   isRecording: boolean;
+  isToolbarVisible: boolean;
 }
 
 // === Initial State === //
@@ -114,6 +118,7 @@ const initialState: ApplicationState = {
   showCountdown: true,
   
   isRecording: false,
+  isToolbarVisible: true,
   
   traces: [],
   selectedCount: 0,
@@ -312,6 +317,12 @@ function applicationReducer(state: ApplicationState, action: ApplicationAction):
         isRecording: action.payload,
       };
     
+    case 'SET_TOOLBAR_VISIBLE':
+      return {
+        ...state,
+        isToolbarVisible: action.payload,
+      };
+    
     case 'RESET_SESSION':
       return {
         ...initialState,
@@ -464,6 +475,10 @@ export const ApplicationProvider: React.FC<ApplicationProviderProps> = ({
     safeDispatch({ type: 'SET_RECORDING', payload: recording });
   }, [safeDispatch]);
 
+  const setToolbarVisible = useCallback((visible: boolean) => {
+    safeDispatch({ type: 'SET_TOOLBAR_VISIBLE', payload: visible });
+  }, [safeDispatch]);
+
   const resetSession = useCallback(() => {
     safeDispatch({ type: 'RESET_SESSION' });
   }, [safeDispatch]);
@@ -488,6 +503,7 @@ export const ApplicationProvider: React.FC<ApplicationProviderProps> = ({
     setCountdown,
     setShowCountdown,
     setRecording,
+    setToolbarVisible,
     resetSession,
     
     // Derived data (for backward compatibility)
@@ -503,6 +519,7 @@ export const ApplicationProvider: React.FC<ApplicationProviderProps> = ({
     countdown: state.countdown,
     showCountdown: state.showCountdown,
     isRecording: state.isRecording,
+    isToolbarVisible: state.isToolbarVisible,
   };
 
   return (

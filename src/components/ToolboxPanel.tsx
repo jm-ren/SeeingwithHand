@@ -29,6 +29,7 @@ interface ToolboxPanelProps {
   onToolSelect: (tool: Tool) => void;
   selectedTool: Tool;
   selectedCount: number;
+  isVisible?: boolean;
 }
 
 const tools: ToolInfo[] = [
@@ -103,6 +104,7 @@ const ToolboxPanel = ({
   onToolSelect,
   selectedTool,
   selectedCount,
+  isVisible = true,
 }: ToolboxPanelProps) => {
   const [activeTool, setActiveTool] = useState<Tool>(selectedTool);
 
@@ -202,7 +204,13 @@ const ToolboxPanel = ({
   };
 
   return (
-    <div className="w-[80px] bg-[#F8F8F8] border border-[#666666] flex flex-col items-center py-[24px] px-[24px] gap-[24px]" style={{ fontFamily: 'Azeret Mono, monospace', borderRadius: '0' }}>
+    <div 
+      className="w-[80px] bg-[#F8F8F8] border border-[#666666] flex flex-col items-center py-[24px] px-[24px] gap-[24px]" 
+      style={{ 
+        fontFamily: 'Azeret Mono, monospace', 
+        borderRadius: '0',
+      }}
+    >
       <TooltipProvider>
         {renderToolSection("implicit")}
         <div className="w-full h-[1px] bg-[#666666]" />
