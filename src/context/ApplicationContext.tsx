@@ -104,13 +104,13 @@ const initialState: ApplicationState = {
   annotations: [],
   groups: [],
   selectedAnnotations: [],
-  selectedTool: 'point',
+  selectedTool: 'freehand',
   selectedColor: '#2CA800',
   
   isSessionActive: false,
   sessionId: null,
   sessionEvents: [],
-  countdown: 10,
+  countdown: 3,
   showCountdown: true,
   
   isRecording: false,
@@ -177,10 +177,12 @@ function applicationReducer(state: ApplicationState, action: ApplicationAction):
       
       if (multiSelect) {
         newSelectedAnnotations = state.selectedAnnotations.includes(id)
-          ? state.selectedAnnotations.filter(annotationId => annotationId !== id)
+          ? state.selectedAnnotations.filter(selectedId => selectedId !== id)
           : [...state.selectedAnnotations, id];
       } else {
-        newSelectedAnnotations = [id];
+        newSelectedAnnotations = state.selectedAnnotations.includes(id) && state.selectedAnnotations.length === 1
+          ? []
+          : [id];
       }
       
       return {
@@ -211,6 +213,7 @@ function applicationReducer(state: ApplicationState, action: ApplicationAction):
     
     case 'CREATE_GROUP': {
       const annotationIds = action.payload;
+      
       if (annotationIds.length < 2) return state;
       
       const groupId = generateId('group-');
@@ -224,9 +227,10 @@ function applicationReducer(state: ApplicationState, action: ApplicationAction):
       
       const newAnnotations = state.annotations.map(annotation => {
         if (annotationIds.includes(annotation.id)) {
-          const updatedGroupIds = annotation.groupIds
+          const updatedGroupIds = annotation.groupIds 
             ? [...annotation.groupIds, groupId]
             : [groupId];
+          
           return { ...annotation, groupIds: updatedGroupIds };
         }
         return annotation;
@@ -253,6 +257,7 @@ function applicationReducer(state: ApplicationState, action: ApplicationAction):
         isSessionActive: true,
         sessionId: newSessionId,
         sessionEvents: [startEvent],
+        showCountdown: false,
       };
     }
     
@@ -343,7 +348,7 @@ interface ApplicationProviderProps {
 export const ApplicationProvider: React.FC<ApplicationProviderProps> = ({
   children,
   initialAnnotations = [],
-  initialTool = 'point',
+  initialTool = 'freehand',
   onError,
 }) => {
   // Use a fallback error handler if useErrorHandler is not available
@@ -384,6 +389,19 @@ export const ApplicationProvider: React.FC<ApplicationProviderProps> = ({
       }
     }
   }, [dispatch, onError, handleError]);
+
+  // Auto-start countdown when component mounts and handle countdown logic
+  useEffect(() => {
+    if (state.showCountdown && state.countdown > 0) {
+      const timer = setTimeout(() => {
+        safeDispatch({ type: 'SET_COUNTDOWN', payload: state.countdown - 1 });
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (state.showCountdown && state.countdown === 0) {
+      // Auto-start session when countdown reaches zero
+      safeDispatch({ type: 'START_SESSION' });
+    }
+  }, [state.countdown, state.showCountdown, safeDispatch]);
 
   // === Action Creators === //
   const setAnnotations = useCallback((annotations: Annotation[]) => {

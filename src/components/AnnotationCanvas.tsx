@@ -25,7 +25,7 @@ const AnnotationCanvas = ({
   onAnnotationChange = () => {},
   onSelectionChange = () => {},
   initialAnnotations = [],
-  selectedTool = "point",
+  selectedTool = "freehand",
   onToolChange = () => {},
 }: AnnotationCanvasProps) => {
   // Use contexts

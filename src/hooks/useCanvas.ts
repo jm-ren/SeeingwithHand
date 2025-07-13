@@ -15,7 +15,7 @@ interface UseCanvasOptions {
 export function useCanvas({
   imageUrl = appSettings.canvas.defaultImageUrl,
   annotations = [],
-  selectedTool = 'point',
+  selectedTool = 'freehand',
   onAnnotationCreate,
   onAnnotationUpdate,
 }: UseCanvasOptions = {}) {

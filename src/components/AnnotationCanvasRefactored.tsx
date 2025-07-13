@@ -23,7 +23,7 @@ const AnnotationCanvasRefactored: React.FC<AnnotationCanvasProps> = ({
   onAnnotationChange = () => {},
   onSelectionChange = () => {},
   initialAnnotations = [],
-  selectedTool = "point",
+  selectedTool = "freehand",
   onToolChange = () => {},
 }) => {
   // Application state

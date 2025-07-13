@@ -51,7 +51,7 @@ interface AnnotationProviderProps {
 export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
   children,
   initialAnnotations = [],
-  initialTool = 'point',
+  initialTool = 'freehand',
 }) => {
   // State
   const [annotations, setAnnotations] = useState<Annotation[]>(initialAnnotations);
