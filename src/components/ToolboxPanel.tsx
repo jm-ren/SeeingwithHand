@@ -15,15 +15,7 @@ import {
   Group,
 } from "lucide-react";
 import { Divider } from "./ui/divider";
-
-type Tool =
-  | "point"
-  | "line"
-  | "frame"
-  | "area"
-  | "freehand"
-  | "select"
-  | "group";
+import { Tool } from "../types/annotations";
 
 interface ToolInfo {
   name: Tool;

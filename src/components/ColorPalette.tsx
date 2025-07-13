@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAnnotations } from '../context/AnnotationContext';
+import { useApplication } from '../context/ApplicationContext';
 
 const PALETTE_COLORS = [
   '#2CA800', // Green
@@ -13,7 +13,7 @@ interface ColorPaletteProps {
 }
 
 const ColorPalette: React.FC<ColorPaletteProps> = ({ className = '' }) => {
-  const { selectedColor, setSelectedColor } = useAnnotations();
+  const { selectedColor, setSelectedColor } = useApplication();
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>

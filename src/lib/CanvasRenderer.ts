@@ -54,9 +54,11 @@ export class CanvasRenderer {
   }
 
   drawImage(): void {
+    console.log('[CanvasRenderer] drawImage called, image:', !!this.image, 'imageScaling:', this.config.imageScaling);
     if (!this.image || !this.config.imageScaling) return;
 
     const { x, y, width, height } = this.config.imageScaling;
+    console.log('[CanvasRenderer] Drawing image at:', { x, y, width, height });
     this.ctx.drawImage(this.image, x, y, width, height);
   }
 

@@ -4,7 +4,7 @@ import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Clock, DotSquare, PenLine, Square, Pencil, Group, ArrowDown, Activity } from "lucide-react";
-import { useAnnotations } from "../context/AnnotationContext";
+import { useAnnotations } from "../context/ApplicationContext";
 
 interface TraceItem {
   id: string;

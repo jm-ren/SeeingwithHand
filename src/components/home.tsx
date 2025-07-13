@@ -1,22 +1,13 @@
 import React, { useCallback, useEffect, useState } from "react";
-import AnnotationCanvasRefactored from "./AnnotationCanvasRefactored";
+import AnnotationCanvas from "./AnnotationCanvas";
 import ToolboxPanel from "./ToolboxPanel";
 import SessionControls from "./SessionControls";
 import Traceboard from "./Traceboard";
 import { useApplication } from "../context/ApplicationContext";
-import { Annotation } from "../types/annotations";
+import { Annotation, Tool } from "../types/annotations";
 import { processTracesForDisplay } from "../lib/utils";
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { appSettings } from "../config/appConfig";
-
-type Tool =
-  | "point"
-  | "line"
-  | "frame"
-  | "area"
-  | "freehand"
-  | "select"
-  | "group";
 
 interface Point {
   x: number;
@@ -37,8 +28,9 @@ interface TraceItem {
 // Map imageId to image file path
 const imageMap: Record<string, string> = {
   img1: '/images/image 002_agnes martin.png',
-  img2: '/images/image 003_morandi_landscape_cottage.png',
-  // Add more mappings as needed
+  img2: '/images/image 001_villa savoye.png',
+  img3: '/images/image 003_morandi_landscape_cottage.png',
+  img4: '/images/image 004_brancusi studio.png',
 };
 
 interface HomeProps {
@@ -54,9 +46,13 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
   const imageUrl = imageId && imageMap[imageId]
     ? imageMap[imageId]
     : "https://images2.dwell.com/photos/6133553759298379776/6297915443342360576/original.jpg?auto=format&q=35&w=1600";
+  
+  // Debug logging
+  console.log('[Home] imageId:', imageId);
+  console.log('[Home] imageUrl:', imageUrl);
+  console.log('[Home] imageMap:', imageMap);
 
   // State management
-  const [selectedTool, setSelectedTool] = useState<Tool>("point");
   const [selectedCount, setSelectedCount] = useState(0);
   const [visualizationCanvas, setVisualizationCanvas] =
     useState<HTMLCanvasElement | null>(null);
@@ -68,8 +64,8 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
     showCountdown, 
     resetSession, 
     annotations, 
-    selectedTool: contextSelectedTool, 
-    setSelectedTool: setContextSelectedTool, 
+    selectedTool, 
+    setSelectedTool, 
     selectedCount: contextSelectedCount, 
     selectedColor 
   } = useApplication();
@@ -292,17 +288,17 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
     <div className="flex h-screen w-screen overflow-hidden" style={{ background: '#FBFAF8' }}>
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col relative">
-        {/* Toolbox Panel - Hidden for now */}
-        {/* <div className="absolute top-4 left-4 z-10">
+        {/* Toolbox Panel */}
+        <div className="absolute top-4 left-4 z-10">
           <ToolboxPanel
             selectedTool={selectedTool}
             onToolSelect={handleToolSelect}
             selectedCount={selectedCount}
           />
-        </div> */}
+        </div>
 
         <div className="flex-1 overflow-hidden">
-          <AnnotationCanvasRefactored
+          <AnnotationCanvas
             imageUrl={imageUrl}
             selectedTool={selectedTool}
             onAnnotationChange={handleAnnotationChange}

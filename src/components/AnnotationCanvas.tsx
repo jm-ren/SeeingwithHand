@@ -7,8 +7,7 @@ import {
   TooltipTrigger,
 } from "./ui/tooltip";
 import { Undo2 } from "lucide-react";
-import { useAnnotations } from "../context/AnnotationContext";
-import { useSession } from "../context/SessionContext";
+import { useApplication } from "../context/ApplicationContext";
 import { Point, Annotation, Tool, Group } from "../types/annotations";
 import { appSettings } from "../config/appConfig";
 
@@ -42,10 +41,10 @@ const AnnotationCanvas = ({
     createGroup,
     selectedCount,
     selectedAnnotations,
-    selectedColor
-  } = useAnnotations();
-  
-  const { isSessionActive, recordInteractionEvent } = useSession();
+    selectedColor,
+    isSessionActive,
+    recordInteractionEvent
+  } = useApplication();
   
   // Local state
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -702,15 +701,23 @@ const AnnotationCanvas = ({
       ctx.fill();
     }
     // Draw freehand path as you draw
-    if (traceType === "freehand" && currentTrace.length > 1) {
+    if (traceType === "freehand" && currentTrace.length > 0) {
       ctx.beginPath();
-      ctx.moveTo(currentTrace[0].x, currentTrace[0].y);
-      for (let i = 1; i < currentTrace.length; i++) {
-        ctx.lineTo(currentTrace[i].x, currentTrace[i].y);
+      if (currentTrace.length === 1) {
+        // Draw a small circle for single point freehand
+        ctx.arc(currentTrace[0].x, currentTrace[0].y, appSettings.canvas.lineWidth / 2, 0, Math.PI * 2);
+        ctx.fillStyle = traceColor;
+        ctx.fill();
+      } else {
+        // Draw the path for multiple points
+        ctx.moveTo(currentTrace[0].x, currentTrace[0].y);
+        for (let i = 1; i < currentTrace.length; i++) {
+          ctx.lineTo(currentTrace[i].x, currentTrace[i].y);
+        }
+        ctx.strokeStyle = traceColor;
+        ctx.lineWidth = appSettings.canvas.lineWidth;
+        ctx.stroke();
       }
-      ctx.strokeStyle = traceColor;
-      ctx.lineWidth = appSettings.canvas.lineWidth;
-      ctx.stroke();
     }
     // Draw hover trace (faint, beautifully fading)
     if (hoverTrace.length > 1 && hoverFadeAlpha > 0) {
@@ -730,11 +737,88 @@ const AnnotationCanvas = ({
     }
   }, [traceType, currentTrace, dwellRadius, hoverTrace, hoverFadeAlpha, selectedColor]);
 
-  // Patch drawCanvas to call drawV2Trace
+  // Helper function to draw current annotation being created
+  const drawCurrentAnnotation = useCallback((ctx: CanvasRenderingContext2D) => {
+    if (currentAnnotation.length === 0) return;
+    
+    const currentStrokeColor = `${selectedColor}CC`; // 80% opacity
+    const currentFillColor = `${selectedColor}33`; // 20% opacity
+    
+    ctx.save();
+    
+    switch (selectedTool) {
+      case "point":
+        if (currentAnnotation[0]) {
+          ctx.beginPath();
+          ctx.arc(
+            currentAnnotation[0].x,
+            currentAnnotation[0].y,
+            appSettings.canvas.pointRadius,
+            0,
+            Math.PI * 2
+          );
+          ctx.strokeStyle = currentStrokeColor;
+          ctx.lineWidth = appSettings.canvas.lineWidth;
+          ctx.stroke();
+        }
+        break;
+        
+      case "line":
+        if (currentAnnotation[0] && tempMousePos && isDrawing) {
+          ctx.beginPath();
+          ctx.moveTo(currentAnnotation[0].x, currentAnnotation[0].y);
+          ctx.lineTo(tempMousePos.x, tempMousePos.y);
+          ctx.strokeStyle = currentStrokeColor;
+          ctx.lineWidth = appSettings.canvas.lineWidth;
+          ctx.stroke();
+        } else if (currentAnnotation[0] && currentAnnotation[1]) {
+          ctx.beginPath();
+          ctx.moveTo(currentAnnotation[0].x, currentAnnotation[0].y);
+          ctx.lineTo(currentAnnotation[1].x, currentAnnotation[1].y);
+          ctx.strokeStyle = currentStrokeColor;
+          ctx.lineWidth = appSettings.canvas.lineWidth;
+          ctx.stroke();
+        }
+        break;
+        
+      case "frame":
+        if (isCreatingPolygon) {
+          drawPolygon(
+            ctx, 
+            currentAnnotation, 
+            false, 
+            currentFillColor, 
+            currentStrokeColor, 
+            appSettings.canvas.lineWidth,
+            true // isPreviewMode
+          );
+        }
+        break;
+        
+      case "area":
+        if (isCreatingPolygon) {
+          drawPolygon(
+            ctx, 
+            currentAnnotation, 
+            true, 
+            currentFillColor, 
+            currentStrokeColor, 
+            appSettings.canvas.lineWidth,
+            true // isPreviewMode
+          );
+        }
+        break;
+    }
+    
+    ctx.restore();
+  }, [currentAnnotation, selectedTool, selectedColor, tempMousePos, isDrawing, isCreatingPolygon]);
+
+  // Main canvas drawing function
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx || !imageRef.current || !imageScaling) return;
+    
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(
       imageRef.current,
@@ -743,9 +827,10 @@ const AnnotationCanvas = ({
       imageScaling.width,
       imageScaling.height,
     );
-    drawAnnotations(ctx); // Draw legacy/committed annotations
-    drawV2Trace(ctx);     // Draw V2 live trace/hover
-  }, [drawAnnotations, imageScaling, drawV2Trace]);
+    drawAnnotations(ctx);         // Draw completed annotations
+    drawCurrentAnnotation(ctx);   // Draw current annotation being created
+    drawV2Trace(ctx);            // Draw V2 live trace/hover
+  }, [drawAnnotations, imageScaling, drawV2Trace, drawCurrentAnnotation]);
 
   // Redraw on V2 tracing state changes
   useEffect(() => {
@@ -921,32 +1006,57 @@ const AnnotationCanvas = ({
   // --- V2 Pointer Event Handlers ---
   const handlePointerDownV2 = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     e.preventDefault();
+    console.log("=== V2 POINTER DOWN ===");
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     finalizeHoverTrace();
     setIsHoverFading(false);
     setHoverFadeAlpha(0.08);
-    if (!imageScaling) return;
+    
+    if (!imageScaling) {
+      console.log("No image scaling, returning early");
+      return;
+    }
+    
     const rect = canvasRef.current!.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+    
+    console.log("Click coordinates:", { x, y });
+    console.log("Image bounds:", {
+      minX: imageScaling.x,
+      minY: imageScaling.y,
+      maxX: imageScaling.x + imageScaling.width,
+      maxY: imageScaling.y + imageScaling.height
+    });
+    
     if (
       x < imageScaling.x ||
       y < imageScaling.y ||
       x > imageScaling.x + imageScaling.width ||
       y > imageScaling.y + imageScaling.height
     ) {
+      console.log("Click outside image bounds, returning early");
       return;
     }
     const now = Date.now();
     setPointerDown(true);
     setPointerStart({ point: { x, y }, time: now });
     setCurrentTrace([{ x, y }]);
-    setTraceType("point");
-    setDwellRadius(5);
-    dwellTimerRef.current = setInterval(() => {
-      setDwellRadius((r) => Math.min(r + 1, 30));
-    }, 30);
-  }, [imageScaling, finalizeHoverTrace]);
+    
+    // Force freehand mode when freehand tool is explicitly selected
+    if (selectedTool === "freehand") {
+      console.log("✅ Freehand tool: Starting freehand trace at", { x, y });
+      console.log("Setting trace type to freehand");
+      setTraceType("freehand");
+    } else {
+      console.log("Setting trace type to point (not freehand tool)");
+      setTraceType("point");
+      setDwellRadius(5);
+      dwellTimerRef.current = setInterval(() => {
+        setDwellRadius((r) => Math.min(r + 1, 30));
+      }, 30);
+    }
+  }, [imageScaling, finalizeHoverTrace, selectedTool]);
 
   const handlePointerMoveV2 = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     e.preventDefault();
@@ -954,10 +1064,14 @@ const AnnotationCanvas = ({
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     if (pointerDown && pointerStart) {
+      console.log("V2 Pointer move - adding to trace:", { x, y, traceType, currentTraceLength: currentTrace.length });
       const dx = x - pointerStart.point.x;
       const dy = y - pointerStart.point.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (traceType === "point" && dist > MOVE_THRESHOLD) {
+      
+      // Only switch from point to freehand if not explicitly using freehand tool
+      if (traceType === "point" && selectedTool !== "freehand" && dist > MOVE_THRESHOLD) {
+        console.log("Auto-switching from point to freehand due to movement");
         setTraceType("freehand");
         if (dwellTimerRef.current) clearInterval(dwellTimerRef.current);
       }
@@ -973,12 +1087,15 @@ const AnnotationCanvas = ({
         handleHoverInactivity();
       }, HOVER_FADE_TIME);
     }
-  }, [pointerDown, pointerStart, traceType, finalizeHoverTrace, handleHoverInactivity]);
+  }, [pointerDown, pointerStart, traceType, selectedTool, finalizeHoverTrace, handleHoverInactivity]);
 
   const handlePointerUpV2 = useCallback((e?: React.PointerEvent<HTMLCanvasElement>) => {
     if (e) e.preventDefault();
     if (!pointerDown) return;
     if (dwellTimerRef.current) clearInterval(dwellTimerRef.current);
+    
+    console.log("Pointer up V2:", { traceType, currentTraceLength: currentTrace.length, selectedTool });
+    
     if (traceType === "point" && currentTrace.length > 0) {
       // Classify as dwell or tap
       const duration = Date.now() - (pointerStart?.time || 0);
@@ -992,24 +1109,36 @@ const AnnotationCanvas = ({
         gestureType: gesture,
         duration,
       });
-    } else if (traceType === "freehand" && currentTrace.length > 1) {
-      // Classify freehand gesture
-      const gesture = classifyFreehandGesture(currentTrace, pointerStart?.time || 0, false);
-      addAnnotation({
-        type: "freehand",
-        points: currentTrace,
-        color: selectedColor,
-        selected: false,
-        gestureType: gesture.type,
-        ...gesture.metrics,
-      });
+    } else if (traceType === "freehand" && currentTrace.length > 0) {
+      console.log("Creating freehand annotation with", currentTrace.length, "points");
+      // For explicit freehand tool, always create freehand annotation even with single point
+      if (selectedTool === "freehand") {
+        addAnnotation({
+          type: "freehand",
+          points: currentTrace,
+          color: selectedColor,
+          selected: false,
+          gestureType: "freehand",
+        });
+      } else if (currentTrace.length > 1) {
+        // For automatic classification, require multiple points
+        const gesture = classifyFreehandGesture(currentTrace, pointerStart?.time || 0, false);
+        addAnnotation({
+          type: "freehand",
+          points: currentTrace,
+          color: selectedColor,
+          selected: false,
+          gestureType: gesture.type,
+          ...gesture.metrics,
+        });
+      }
     }
     setPointerDown(false);
     setPointerStart(null);
     setCurrentTrace([]);
     setTraceType("none");
     setDwellRadius(5);
-  }, [pointerDown, traceType, currentTrace, pointerStart, addAnnotation, selectedColor]);
+  }, [pointerDown, traceType, currentTrace, pointerStart, selectedTool, addAnnotation, selectedColor]);
 
   const handlePointerLeaveV2 = useCallback((e?: React.PointerEvent<HTMLCanvasElement>) => {
     if (e) e.preventDefault();
@@ -1020,6 +1149,209 @@ const AnnotationCanvas = ({
     setHoverFadeAlpha(0.08);
     setHoverTrace([]);
   }, [pointerDown, handlePointerUpV2, finalizeHoverTrace]);
+
+  // --- Tool-aware Main Event Handlers ---
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    
+    console.log("=== POINTER DOWN DEBUG ===");
+    console.log("Selected tool:", selectedTool);
+    console.log("Image scaling:", imageScaling);
+    
+    // If using freehand tool, delegate to V2 system for gesture classification
+    if (selectedTool === "freehand") {
+      console.log("Delegating to V2 system for freehand");
+      return handlePointerDownV2(e);
+    }
+
+    if (!imageScaling) return;
+    
+    const rect = canvasRef.current!.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Check if click is within image bounds
+    if (
+      x < imageScaling.x ||
+      y < imageScaling.y ||
+      x > imageScaling.x + imageScaling.width ||
+      y > imageScaling.y + imageScaling.height
+    ) {
+      return;
+    }
+
+    const clickPoint = { x, y };
+
+    // Handle selection tool
+    if (selectedTool === "select" || isShiftKeyDown) {
+      const clickedAnnotation = annotations.find(annotation => 
+        isPointInAnnotation(clickPoint, annotation)
+      );
+      
+             if (clickedAnnotation) {
+         if (isShiftKeyDown) {
+           // Multi-select (selectAnnotation with multiSelect=true toggles selection)
+           selectAnnotation(clickedAnnotation.id, true);
+         } else {
+           // Single select
+           deselectAll();
+           selectAnnotation(clickedAnnotation.id);
+         }
+       } else if (!isShiftKeyDown) {
+         deselectAll();
+       }
+      return;
+    }
+
+    // Record interaction event if session is active
+    if (isSessionActive) {
+      recordInteractionEvent('annotation_create_start', {
+        toolType: selectedTool,
+        position: clickPoint
+      });
+    }
+
+    switch (selectedTool) {
+      case "point":
+        // For point tool, immediately create the annotation
+        addAnnotation({
+          type: "point",
+          points: [clickPoint],
+          color: selectedColor,
+          selected: false,
+        });
+        break;
+        
+      case "line":
+        if (currentAnnotation.length === 0) {
+          setCurrentAnnotation([clickPoint]);
+          setIsDrawing(true);
+        } else {
+          // Complete the line
+          addAnnotation({
+            type: "line",
+            points: [currentAnnotation[0], clickPoint],
+            color: selectedColor,
+            selected: false,
+          });
+          setCurrentAnnotation([]);
+          setIsDrawing(false);
+        }
+        break;
+        
+      case "frame":
+      case "area":
+        // Polygon creation mode
+        if (!isCreatingPolygon) {
+          setIsCreatingPolygon(true);
+          setCurrentAnnotation([clickPoint]);
+        } else {
+          // Check if clicking near the first point to close polygon
+          if (currentAnnotation.length >= 3 && 
+              isPointNearPoint(clickPoint, currentAnnotation[0], 15)) {
+            // Close polygon
+            addAnnotation({
+              type: selectedTool,
+              points: currentAnnotation,
+              color: selectedColor,
+              selected: false,
+            });
+            setCurrentAnnotation([]);
+            setIsCreatingPolygon(false);
+          } else {
+            // Add point to polygon
+            setCurrentAnnotation(prev => [...prev, clickPoint]);
+          }
+        }
+        break;
+        
+      default:
+        console.log("Unhandled tool:", selectedTool);
+    }
+  }, [selectedTool, imageScaling, annotations, selectedAnnotations, isShiftKeyDown, isSessionActive, 
+      currentAnnotation, isCreatingPolygon, isDrawing, selectedColor, addAnnotation, selectAnnotation, 
+      deselectAll, recordInteractionEvent, handlePointerDownV2]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    
+    // If using freehand tool, delegate to V2 system
+    if (selectedTool === "freehand") {
+      return handlePointerMoveV2(e);
+    }
+
+    const rect = canvasRef.current!.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setTempMousePos({ x, y });
+
+    // Handle hover traces for all tools except select
+    if (selectedTool !== "select" && !isShiftKeyDown && !pointerDown) {
+      setHoverTrace((prev) => [...prev, { x, y }]);
+      setIsHoverFading(false);
+      setHoverFadeAlpha(0.08);
+      
+      // Reset hover inactivity timer
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = setTimeout(() => {
+        finalizeHoverTrace();
+        handleHoverInactivity();
+      }, HOVER_FADE_TIME);
+    }
+  }, [selectedTool, isShiftKeyDown, pointerDown, finalizeHoverTrace, handleHoverInactivity, handlePointerMoveV2]);
+
+  const handlePointerUp = useCallback((e?: React.PointerEvent<HTMLCanvasElement>) => {
+    // If using freehand tool, delegate to V2 system
+    if (selectedTool === "freehand") {
+      return handlePointerUpV2(e);
+    }
+
+    if (e) e.preventDefault();
+    setIsDrawing(false);
+  }, [selectedTool, handlePointerUpV2]);
+
+  const handlePointerLeave = useCallback((e?: React.PointerEvent<HTMLCanvasElement>) => {
+    // If using freehand tool, delegate to V2 system
+    if (selectedTool === "freehand") {
+      return handlePointerLeaveV2(e);
+    }
+
+    if (e) e.preventDefault();
+    setIsDrawing(false);
+    setTempMousePos(null);
+    
+    // Finalize hover trace
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    finalizeHoverTrace();
+    setIsHoverFading(false);
+    setHoverFadeAlpha(0.08);
+    setHoverTrace([]);
+  }, [selectedTool, finalizeHoverTrace, handlePointerLeaveV2]);
+
+  // Helper function to check if point is in annotation
+  const isPointInAnnotation = (point: Point, annotation: Annotation): boolean => {
+    switch (annotation.type) {
+      case "point":
+        return isPointNearPoint(point, annotation.points[0], 15);
+      case "line":
+        return annotation.points.length >= 2 && 
+               isPointNearLine(point, annotation.points[0], annotation.points[1]);
+      case "frame":
+        return annotation.points.length >= 3 ? 
+               isPointInPolygon(point, annotation.points, 5) :
+               annotation.points.length === 2 && 
+               isPointInRect(point, annotation.points[0], annotation.points[1]);
+      case "area":
+        return annotation.points.length >= 3 ? 
+               isPointInPolygon(point, annotation.points, 5) :
+               annotation.points.length === 2 && 
+               isPointInRect(point, annotation.points[0], annotation.points[1]);
+      case "freehand":
+        return isPointNearPolyline(point, annotation.points);
+      default:
+        return false;
+    }
+  };
 
   // --- Gesture Classification Helper ---
   function classifyFreehandGesture(trace: Point[], startTime: number, isHover = false) {
@@ -1142,10 +1474,10 @@ const AnnotationCanvas = ({
         ref={canvasRef}
         className="absolute top-0 left-0 w-full h-full"
         style={{ touchAction: "none", userSelect: "none" }}
-        onPointerDown={handlePointerDownV2}
-        onPointerMove={handlePointerMoveV2}
-        onPointerUp={handlePointerUpV2}
-        onPointerLeave={handlePointerLeaveV2}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerLeave}
         onCopy={e => e.preventDefault()}
         onCut={e => e.preventDefault()}
         onPaste={e => e.preventDefault()}

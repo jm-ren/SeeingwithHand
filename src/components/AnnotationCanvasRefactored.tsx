@@ -94,17 +94,20 @@ const AnnotationCanvasRefactored: React.FC<AnnotationCanvasProps> = ({
 
   // Initialize image
   useEffect(() => {
+    console.log('[AnnotationCanvasRefactored] Loading image:', imageUrl);
     const image = new Image();
     image.crossOrigin = "anonymous";
 
     image.onload = () => {
+      console.log('[AnnotationCanvasRefactored] Image loaded successfully:', imageUrl);
       imageRef.current = image;
       setImageDimensions({ width: image.width, height: image.height });
       setImageLoaded(true);
     };
 
     image.onerror = (error) => {
-      console.error("Error loading image:", error);
+      console.error("[AnnotationCanvasRefactored] Error loading image:", error);
+      console.error("[AnnotationCanvasRefactored] Failed image URL:", imageUrl);
     };
 
     image.src = imageUrl;
@@ -117,11 +120,13 @@ const AnnotationCanvasRefactored: React.FC<AnnotationCanvasProps> = ({
 
   // Initialize canvas renderer
   useEffect(() => {
+    console.log('[AnnotationCanvasRefactored] Initializing canvas renderer, imageLoaded:', imageLoaded);
     if (!canvasRef.current || !imageLoaded) return;
 
     try {
       rendererRef.current = new CanvasRenderer(canvasRef.current, canvasConfig);
       if (imageRef.current) {
+        console.log('[AnnotationCanvasRefactored] Setting image on renderer');
         rendererRef.current.setImage(imageRef.current);
       }
     } catch (error) {
@@ -486,12 +491,18 @@ const AnnotationCanvasRefactored: React.FC<AnnotationCanvasProps> = ({
       offsetY = 0;
     }
 
-    setImageScaling({
+    const newImageScaling = {
       width: scaledWidth,
       height: scaledHeight,
       x: offsetX,
       y: offsetY,
-    });
+    };
+
+    console.log('[AnnotationCanvasRefactored] Calculated imageScaling:', newImageScaling);
+    console.log('[AnnotationCanvasRefactored] Container dimensions:', containerWidth, 'x', containerHeight);
+    console.log('[AnnotationCanvasRefactored] Image dimensions:', imageDimensions);
+
+    setImageScaling(newImageScaling);
   }, [imageDimensions]);
 
   // Update renderer configuration
@@ -533,9 +544,15 @@ const AnnotationCanvasRefactored: React.FC<AnnotationCanvasProps> = ({
   // Render canvas
   useEffect(() => {
     if (rendererRef.current) {
+      console.log('[AnnotationCanvasRefactored] Rendering canvas with:', {
+        imageLoaded,
+        imageScaling,
+        annotationsCount: annotations.length,
+        drawingState
+      });
       rendererRef.current.render(annotations, drawingState);
     }
-  }, [annotations, drawingState]);
+  }, [annotations, drawingState, imageLoaded, imageScaling]);
 
   // Notify parent of changes
   useEffect(() => {

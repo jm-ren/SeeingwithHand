@@ -15,8 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "./ui/dialog";
-import { useSession } from "../context/SessionContext";
-import { useAnnotations } from "../context/AnnotationContext";
+import { useApplication } from "../context/ApplicationContext";
 import EyeVisualization from "./EyeVisualization";
 import Legend from "./Legend";
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
@@ -54,8 +53,7 @@ const SessionControls = ({
   const [visualizationProgress, setVisualizationProgress] = useState(0);
   const [speedIndex, setSpeedIndex] = useState(0); // Start at index 0 (1x relative, which is 16x absolute)
   const [audioEnabled, setAudioEnabled] = useState(true); // Audio recording enabled by default
-  const { isSessionActive, startSession, endSession } = useSession();
-  const { annotations } = useAnnotations();
+  const { isSessionActive, startSession, endSession, recordInteractionEvent, annotations } = useApplication();
   const audio = audioRecorder || useAudioRecorder();
 
   const relativeSpeed = relativeSpeeds[speedIndex];
