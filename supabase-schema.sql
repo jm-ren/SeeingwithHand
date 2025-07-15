@@ -42,6 +42,16 @@ CREATE POLICY "Allow public upload to audio-recordings" ON storage.objects
 CREATE POLICY "Allow public read from audio-recordings" ON storage.objects
     FOR SELECT USING (bucket_id = 'audio-recordings');
 
+-- Create storage bucket for context files
+INSERT INTO storage.buckets (id, name, public) VALUES ('context-files', 'context-files', true);
+
+-- Create storage policy for context files
+CREATE POLICY "Allow public upload to context-files" ON storage.objects
+    FOR INSERT WITH CHECK (bucket_id = 'context-files');
+
+CREATE POLICY "Allow public read from context-files" ON storage.objects
+    FOR SELECT USING (bucket_id = 'context-files');
+
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$

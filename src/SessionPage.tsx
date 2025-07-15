@@ -3,9 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Home from './components/home';
 import { ApplicationProvider, useApplication } from './context/ApplicationContext';
 import SessionSurveyPage from './SessionSurveyPage';
-import { saveSession, uploadAudioFile } from './lib/supabase';
+import { saveSession, uploadAudioFile, uploadContextFile } from './lib/supabase';
 import SessionReplay from './components/SessionReplay';
-import ReflectionForm from './components/ReflectionForm';
+import AmbienceSurvey from './components/AmbienceSurvey';
 
 const SessionPage: React.FC = () => {
   const { imageId, sessionId } = useParams<{ imageId: string; sessionId: string }>();
@@ -46,6 +46,48 @@ const SessionPageContent: React.FC<{ imageId?: string; sessionId?: string }> = (
         audioUrl = await uploadAudioFile(sessionSummary.audioBlob, fileName);
       }
 
+      // Process additional context items and upload files
+      const processedContextItems = [];
+      if (data.additionalContext && Array.isArray(data.additionalContext)) {
+        for (const item of data.additionalContext) {
+          if (item.type === 'file' && item.fileUrl && item.fileUrl.startsWith('blob:')) {
+            // This is a local blob URL, need to upload the file
+            try {
+              const response = await fetch(item.fileUrl);
+              const blob = await response.blob();
+              const file = new File([blob], item.filename || 'unknown', { type: blob.type });
+              
+              const fileName = `${sessionIdFromContext}-${Date.now()}-${item.filename}`;
+              const uploadedUrl = await uploadContextFile(file, fileName);
+              
+              processedContextItems.push({
+                ...item,
+                fileUrl: uploadedUrl,
+                // Keep the original blob URL for cleanup
+                originalBlobUrl: item.fileUrl
+              });
+            } catch (error) {
+              console.error('Error uploading context file:', error);
+              // Keep the item but with error indication
+              processedContextItems.push({
+                ...item,
+                uploadError: true
+              });
+            }
+          } else {
+            // Text note or already uploaded file
+            processedContextItems.push(item);
+          }
+        }
+      }
+
+      // Clean up blob URLs after upload
+      processedContextItems.forEach(item => {
+        if (item.originalBlobUrl) {
+          URL.revokeObjectURL(item.originalBlobUrl);
+        }
+      });
+
       // Bundle and save session data
       const sessionData = {
         session_name: sessionSummary?.sessionName || 'Untitled Session',
@@ -54,7 +96,10 @@ const SessionPageContent: React.FC<{ imageId?: string; sessionId?: string }> = (
         annotations,
         groups,
         audio_url: audioUrl,
-        survey_data: data,
+        survey_data: {
+          ...data,
+          additionalContext: processedContextItems
+        },
       };
 
       console.log('Saving session data:', sessionData);
@@ -91,155 +136,15 @@ const SessionPageContent: React.FC<{ imageId?: string; sessionId?: string }> = (
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#FBFAF8' }}>
       {showSurvey && sessionSummary && (
-        <div 
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 50,
-            fontFamily: 'Azeret Mono, monospace'
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowSurvey(false);
-            }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              setShowSurvey(false);
-            }
-          }}
-          tabIndex={0}
-        >
-          <div style={{
-            backgroundColor: '#FFFFFF',
-            border: '1px solid #666666',
-            borderRadius: '0',
-            padding: '32px',
-            maxWidth: '720px',
-            width: '100%',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            margin: '20px',
-            position: 'relative'
-          }}>
-            {/* Close button */}
-            <button
-              onClick={() => setShowSurvey(false)}
-              style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                width: '32px',
-                height: '32px',
-                border: '1px solid #666666',
-                borderRadius: '0',
-                backgroundColor: '#FFFFFF',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#666666';
-                e.currentTarget.style.color = '#FFFFFF';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#FFFFFF';
-                e.currentTarget.style.color = '#333333';
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M18 6L6 18M6 6l12 12"/>
-              </svg>
-            </button>
-            <div style={{ marginBottom: '32px' }}>              
-              {/* Session Summary */}
-              <div style={{
-                padding: '24px',
-                border: '1px solid #CCCCCC',
-                borderRadius: '0',
-                backgroundColor: '#F8F8F8',
-                marginBottom: '32px'
-              }}>
-                <h3 style={{
-                  fontFamily: 'Azeret Mono, monospace',
-                  fontSize: '16px',
-                  fontWeight: 500,
-                  letterSpacing: '0.5px',
-                  color: '#333333',
-                  margin: '0 0 16px 0'
-                }}>
-                  {sessionSummary.sessionName}
-                </h3>
-                <img 
-                  src={sessionSummary.imageUrl} 
-                  alt="Session" 
-                  style={{
-                    width: '100%',
-                    height: '240px',
-                    objectFit: 'cover',
-                    borderRadius: '0',
-                    border: '1px solid #CCCCCC',
-                    marginBottom: '16px'
-                  }}
-                />
-                
-                {/* Audio Player */}
-                {sessionSummary.audioUrl && (
-                  <div style={{ marginBottom: '16px' }}>
-                    <audio controls style={{ width: '100%' }}>
-                      <source src={sessionSummary.audioUrl} type="audio/webm" />
-                      Your browser does not support the audio element.
-                    </audio>
-                  </div>
-                )}
-                
-                {/* Replay Button */}
-                <button
-                  onClick={() => setShowReplay(true)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '12px 20px',
-                    border: '1px solid #666666',
-                    borderRadius: '0',
-                    backgroundColor: '#FFFFFF',
-                    color: '#333333',
-                    fontFamily: 'Azeret Mono, monospace',
-                    fontSize: '14px',
-                    fontWeight: 400,
-                    letterSpacing: '0.5px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#333333';
-                    e.currentTarget.style.color = '#FFFFFF';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#FFFFFF';
-                    e.currentTarget.style.color = '#333333';
-                  }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polygon points="5,3 19,12 5,21"/>
-                  </svg>
-                  view session replay
-                </button>
-              </div>
-            </div>
-            
-            <ReflectionForm onSubmit={handleSurveySubmit} />
-          </div>
-        </div>
+        <AmbienceSurvey
+          annotations={annotations}
+          groups={groups}
+          sessionName={sessionSummary.sessionName}
+          imageUrl={sessionSummary.imageUrl}
+          audioUrl={sessionSummary.audioUrl}
+          onSubmit={handleSurveySubmit}
+          onClose={() => setShowSurvey(false)}
+        />
       )}
 
       {/* Session Replay Modal */}

@@ -45,3 +45,44 @@ Decisions:
 ---
 
 To continue work, reference this file for project context and decisions. 
+
+---
+END SESSION FLOW: 
+
+After  “Stop Recording” (session) button is pressed:
+
+1. Audio recording (if enabled) automatically ceases.
+    
+2. A session reflection survey appears.
+    
+3. The user completes the Ambience Survey.
+    
+4. Session data and survey responses are stored in the backend.
+    
+5. The user is redirected to the home page (gallery).
+  
+
+Ambience Survey:
+
+1. An animated replay of traces created, superimposing the image (with 2x speed option).
+    
+2. An audio track of the audio recorded during the session (session-ambiance-audio)
+    
+3. An eye animation translating the tracing data
+    
+4. Form collecting: nickname, location, weather indicator, mood indicator, text input “how do you feel”
+    
+5. A little component: “Additional Context” folder, ux similar to [are.na](http://are.na)’s. This is basically an editable folder in gallery view that has allows uploading file by the user to provide additional ambience or context to their seeing experience. Files supported: text, image, video, url, audio
+    
+
+Additional Context folder: (when it is taking input):
+
+1. "Add Note" button: when user clicks, it populates a text block, similar to sticky note, user can add plain text, and hit enter to submit. Submitting creates a note (session-ambience-note) that appears in the folder. Each submitted note creates a text file in the backend.
+    
+2. "Add Media" button: Clicking this allows users to upload supported documents. Upon submission, the files appear in the folder.
+    
+3. The uploaded files and session-ambience-note files will be saved along with input collected from the rest of the survey. 
+    
+
+4. Submit button
+---

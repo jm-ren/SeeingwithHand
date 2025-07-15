@@ -189,6 +189,37 @@ export async function uploadAudioFile(audioBlob: Blob, fileName: string): Promis
   }
 }
 
+// Upload additional context file
+export async function uploadContextFile(file: File, fileName: string): Promise<string | null> {
+  if (!supabase) {
+    console.log('Mock mode: Context file upload simulated for:', fileName);
+    return `mock-context-file-url-${fileName}`;
+  }
+
+  try {
+    const { data, error } = await supabase.storage
+      .from('context-files')
+      .upload(fileName, file, {
+        contentType: file.type,
+        upsert: false
+      });
+
+    if (error) {
+      console.error('Error uploading context file:', error);
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('context-files')
+      .getPublicUrl(data.path);
+
+    return urlData.publicUrl;
+  } catch (error) {
+    console.error('Error uploading context file:', error);
+    return null;
+  }
+}
+
 // Delete a session
 export async function deleteSession(sessionId: string): Promise<boolean> {
   if (!supabase) {

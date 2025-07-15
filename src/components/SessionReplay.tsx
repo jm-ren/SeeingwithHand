@@ -27,6 +27,9 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [progress, setProgress] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout>();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
 
   // Calculate total duration from annotations
   const totalDuration = annotations.length > 0 
@@ -38,6 +41,156 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
     const annotationTime = annotation.timestamp - (annotations[0]?.timestamp || 0);
     return annotationTime <= currentTime;
   });
+
+  // Progressive annotation drawing
+  const drawProgressiveAnnotations = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Get canvas dimensions
+    const canvasRect = canvas.getBoundingClientRect();
+    const canvasWidth = canvasRect.width;
+    const canvasHeight = canvasRect.height;
+    
+    // Draw each annotation progressively
+    currentAnnotations.forEach((annotation) => {
+      const annotationStartTime = annotation.timestamp - (annotations[0]?.timestamp || 0);
+      const timeSinceStart = currentTime - annotationStartTime;
+      
+      // Convert percentage coordinates to canvas coordinates
+      const convertPoint = (point: any) => ({
+        x: (point.x / 100) * canvasWidth,
+        y: (point.y / 100) * canvasHeight
+      });
+
+      ctx.strokeStyle = annotation.color || '#2CA800';
+      ctx.fillStyle = annotation.color || '#2CA800';
+      ctx.lineWidth = 2;
+
+      switch (annotation.type) {
+        case 'point':
+          if (annotation.points[0]) {
+            const point = convertPoint(annotation.points[0]);
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, 6, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+
+        case 'line':
+          if (annotation.points.length >= 2) {
+            const startPoint = convertPoint(annotation.points[0]);
+            const endPoint = convertPoint(annotation.points[1]);
+            
+            // Animate line drawing based on time since annotation started
+            const animationDuration = 1000; // 1 second to draw line
+            const animationProgress = Math.min(timeSinceStart / animationDuration, 1);
+            
+            const currentEndX = startPoint.x + (endPoint.x - startPoint.x) * animationProgress;
+            const currentEndY = startPoint.y + (endPoint.y - startPoint.y) * animationProgress;
+            
+            ctx.beginPath();
+            ctx.moveTo(startPoint.x, startPoint.y);
+            ctx.lineTo(currentEndX, currentEndY);
+            ctx.stroke();
+          }
+          break;
+
+        case 'freehand':
+          if (annotation.points.length > 1) {
+            const animationDuration = 2000; // 2 seconds to draw freehand
+            const animationProgress = Math.min(timeSinceStart / animationDuration, 1);
+            const pointsToShow = Math.floor(annotation.points.length * animationProgress);
+            
+            if (pointsToShow > 0) {
+              ctx.beginPath();
+              const firstPoint = convertPoint(annotation.points[0]);
+              ctx.moveTo(firstPoint.x, firstPoint.y);
+              
+              for (let i = 1; i < pointsToShow; i++) {
+                const point = convertPoint(annotation.points[i]);
+                ctx.lineTo(point.x, point.y);
+              }
+              
+              // If we're partway through the last segment, draw partial line
+              if (pointsToShow < annotation.points.length) {
+                const lastCompletePoint = convertPoint(annotation.points[pointsToShow - 1]);
+                const nextPoint = convertPoint(annotation.points[pointsToShow]);
+                const segmentProgress = (annotation.points.length * animationProgress) - pointsToShow;
+                
+                const partialEndX = lastCompletePoint.x + (nextPoint.x - lastCompletePoint.x) * segmentProgress;
+                const partialEndY = lastCompletePoint.y + (nextPoint.y - lastCompletePoint.y) * segmentProgress;
+                
+                ctx.lineTo(partialEndX, partialEndY);
+              }
+              
+              ctx.stroke();
+            }
+          }
+          break;
+
+        case 'frame':
+        case 'area':
+          if (annotation.points.length >= 2) {
+            const animationDuration = 1500; // 1.5 seconds to draw frame/area
+            const animationProgress = Math.min(timeSinceStart / animationDuration, 1);
+            const pointsToShow = Math.floor(annotation.points.length * animationProgress);
+            
+            if (pointsToShow > 0) {
+              ctx.beginPath();
+              const firstPoint = convertPoint(annotation.points[0]);
+              ctx.moveTo(firstPoint.x, firstPoint.y);
+              
+              for (let i = 1; i < pointsToShow; i++) {
+                const point = convertPoint(annotation.points[i]);
+                ctx.lineTo(point.x, point.y);
+              }
+              
+              // Close the path if animation is complete
+              if (animationProgress >= 1) {
+                ctx.closePath();
+              }
+              
+              ctx.stroke();
+              
+              // Fill if area and animation is complete
+              if (annotation.type === 'area' && animationProgress >= 1) {
+                ctx.globalAlpha = 0.2;
+                ctx.fill();
+                ctx.globalAlpha = 1;
+              }
+            }
+          }
+          break;
+
+        default:
+          // For any other annotation types, just show as point
+          if (annotation.points[0]) {
+            const point = convertPoint(annotation.points[0]);
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+      }
+    });
+  };
+
+  // Update canvas size when container size changes
+  const updateCanvasSize = () => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const containerRect = container.getBoundingClientRect();
+    canvas.width = containerRect.width;
+    canvas.height = containerRect.height;
+    drawProgressiveAnnotations();
+  };
 
   // Animation controls
   const togglePlay = () => {
@@ -86,6 +239,31 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
     };
   }, [isPlaying, playbackSpeed, totalDuration]);
 
+  // Update canvas when annotations or time changes
+  useEffect(() => {
+    drawProgressiveAnnotations();
+  }, [currentAnnotations, currentTime]);
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      updateCanvasSize();
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Handle image load
+  useEffect(() => {
+    const img = imageRef.current;
+    if (img) {
+      img.onload = () => {
+        updateCanvasSize();
+      };
+    }
+  }, []);
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div style={{
@@ -114,48 +292,51 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
               {sessionDuration && <span>{sessionDuration}</span>}
             </div>
           </div>
-          {onClose && (
-            <button
-              onClick={onClose}
-              style={{
-                background: 'transparent',
-                border: '1px solid #666666',
-                borderRadius: '0',
-                width: '32px',
-                height: '32px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                color: '#666666'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#666666';
-                e.currentTarget.style.color = '#FFFFFF';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = '#666666';
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          )}
+          <button
+            onClick={onClose}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '32px',
+              height: '32px',
+              border: '1px solid #666666',
+              borderRadius: '0',
+              backgroundColor: '#FFFFFF',
+              color: '#666666',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#666666';
+              e.currentTarget.style.color = '#FFFFFF';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#FFFFFF';
+              e.currentTarget.style.color = '#666666';
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18"/>
+              <path d="M6 6l12 12"/>
+            </svg>
+          </button>
         </div>
 
-        {/* Session Image and Visualization */}
+        {/* Image with Progressive Annotation Overlay */}
         <div style={{ marginBottom: '24px' }}>
-          <div style={{ 
-            position: 'relative', 
-            backgroundColor: '#F8F8F8', 
-            borderRadius: '0',
-            border: '1px solid #666666',
-            overflow: 'hidden' 
-          }}>
+          <div 
+            ref={containerRef}
+            style={{ 
+              position: 'relative', 
+              backgroundColor: '#F8F8F8', 
+              borderRadius: '0',
+              border: '1px solid #666666',
+              overflow: 'hidden' 
+            }}
+          >
             <img
+              ref={imageRef}
               src={imageUrl}
               alt={sessionName}
               style={{
@@ -165,24 +346,18 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
                 objectFit: 'contain'
               }}
             />
-            {/* Annotation overlay */}
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-              {currentAnnotations.map((annotation) => (
-                <div
-                  key={annotation.id}
-                  style={{
-                    position: 'absolute',
-                    width: '8px',
-                    height: '8px',
-                    backgroundColor: '#2CA800',
-                    borderRadius: '0',
-                    left: `${annotation.points[0]?.x || 0}%`,
-                    top: `${annotation.points[0]?.y || 0}%`,
-                    transform: 'translate(-50%, -50%)',
-                  }}
-                />
-              ))}
-            </div>
+            {/* Progressive annotation canvas overlay */}
+            <canvas
+              ref={canvasRef}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                pointerEvents: 'none'
+              }}
+            />
           </div>
         </div>
 

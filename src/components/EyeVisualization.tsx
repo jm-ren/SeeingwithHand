@@ -210,6 +210,12 @@ export const EyeVisualization: React.FC<EyeVisualizationProps> = ({
   
   const animationRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
+  const currentProgressRef = useRef<number>(progress);
+
+  // Update progress ref when progress prop changes
+  useEffect(() => {
+    currentProgressRef.current = progress;
+  }, [progress]);
 
   const startAnimation = useCallback(() => {
     lastTimeRef.current = 0; // Reset timer when starting animation
@@ -225,18 +231,36 @@ export const EyeVisualization: React.FC<EyeVisualizationProps> = ({
       lastTimeRef.current = timestamp;
       
       // Calculate progress based on session duration and playback speed prop
-      const progressDelta = (deltaTime / 1000) * (playbackSpeed / visualizationData.sessionDuration);
-      const newProgress = Math.min(progress + progressDelta, 1);
+      if (visualizationData.sessionDuration <= 0) {
+        // No session data, complete immediately
+        currentProgressRef.current = 1;
+        onProgressChange(1);
+        if (animationRef.current) {
+          cancelAnimationFrame(animationRef.current);
+          animationRef.current = 0;
+        }
+        return;
+      }
       
+      const progressDelta = (deltaTime / 1000) * (playbackSpeed / visualizationData.sessionDuration);
+      const newProgress = Math.min(currentProgressRef.current + progressDelta, 1);
+      
+      currentProgressRef.current = newProgress;
       onProgressChange(newProgress);
       
       if (newProgress < 1) {
         animationRef.current = requestAnimationFrame(animate);
+      } else {
+        // Animation completed
+        if (animationRef.current) {
+          cancelAnimationFrame(animationRef.current);
+          animationRef.current = 0;
+        }
       }
     };
     
     animationRef.current = requestAnimationFrame(animate);
-  }, [playbackSpeed, visualizationData.sessionDuration, onProgressChange, progress]);
+  }, [playbackSpeed, visualizationData.sessionDuration, onProgressChange]);
 
   const stopAnimation = useCallback(() => {
     if (animationRef.current) {

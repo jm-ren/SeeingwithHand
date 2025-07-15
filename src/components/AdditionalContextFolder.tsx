@@ -1,0 +1,384 @@
+import React, { useState } from 'react';
+
+export interface AdditionalContextItem {
+  id: string;
+  type: 'note' | 'file';
+  content: string;
+  filename?: string;
+  fileUrl?: string;
+  fileType?: string;
+  fileSize?: number;
+  timestamp: number;
+}
+
+interface AdditionalContextFolderProps {
+  items: AdditionalContextItem[];
+  onAddItem: (item: AdditionalContextItem) => void;
+  onRemoveItem: (id: string) => void;
+}
+
+const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
+  items,
+  onAddItem,
+  onRemoveItem
+}) => {
+  const [showAddOptions, setShowAddOptions] = useState(false);
+  const [noteInput, setNoteInput] = useState('');
+  const [isAddingNote, setIsAddingNote] = useState(false);
+
+  const handleAddNote = () => {
+    if (noteInput.trim()) {
+      const newNote: AdditionalContextItem = {
+        id: `note-${Date.now()}`,
+        type: 'note',
+        content: noteInput.trim(),
+        timestamp: Date.now()
+      };
+      onAddItem(newNote);
+      setNoteInput('');
+      setIsAddingNote(false);
+      setShowAddOptions(false);
+    }
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const fileUrl = URL.createObjectURL(file);
+      const newFile: AdditionalContextItem = {
+        id: `file-${Date.now()}`,
+        type: 'file',
+        content: file.name,
+        filename: file.name,
+        fileUrl: fileUrl,
+        fileType: file.type,
+        fileSize: file.size,
+        timestamp: Date.now()
+      };
+      onAddItem(newFile);
+      setShowAddOptions(false);
+    }
+    // Clear the input
+    event.target.value = '';
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const getFileTypeIcon = (fileType?: string) => {
+    if (!fileType) return '📄';
+    if (fileType.startsWith('image/')) return '🖼️';
+    if (fileType.startsWith('video/')) return '🎥';
+    if (fileType.startsWith('audio/')) return '🎵';
+    if (fileType.includes('pdf')) return '📕';
+    if (fileType.includes('text')) return '📝';
+    return '📄';
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <h3 style={{ 
+        fontSize: '14px', 
+        fontWeight: 500, 
+        margin: 0,
+        fontFamily: 'Azeret Mono, monospace',
+        letterSpacing: '0.5px'
+      }}>
+        Additional Context
+      </h3>
+      
+      {/* Context items grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '0px',
+        minHeight: '313px'
+      }}>
+        {items.map((item) => (
+          <div
+            key={item.id}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '16px',
+              border: '1px solid #000000',
+              backgroundColor: '#FFFFFF',
+              fontSize: '12px',
+              fontWeight: 300,
+              letterSpacing: '-4%',
+              position: 'relative',
+              fontFamily: 'Azeret Mono, monospace'
+            }}
+          >
+            {/* Remove button */}
+            <button
+              type="button"
+              onClick={() => onRemoveItem(item.id)}
+              style={{
+                position: 'absolute',
+                top: '8px',
+                right: '8px',
+                width: '16px',
+                height: '16px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                cursor: 'pointer',
+                fontSize: '12px',
+                color: '#999999'
+              }}
+            >
+              ×
+            </button>
+
+            <div style={{ 
+              textAlign: 'left', 
+              width: '100%',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              {item.type === 'file' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <span>{getFileTypeIcon(item.fileType)}</span>
+                  <span style={{ fontSize: '10px', color: '#666666' }}>
+                    {item.fileSize ? formatFileSize(item.fileSize) : ''}
+                  </span>
+                </div>
+              )}
+              <div style={{ fontSize: '12px', fontWeight: 400 }}>
+                {item.content}
+              </div>
+            </div>
+
+            {/* File preview or note indicator */}
+            {item.type === 'file' && item.fileUrl && (
+              <div style={{ width: '100%', textAlign: 'center' }}>
+                {item.fileType?.startsWith('image/') ? (
+                  <img
+                    src={item.fileUrl}
+                    alt={item.filename}
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '60px',
+                      objectFit: 'contain',
+                      border: '1px solid #CCCCCC'
+                    }}
+                  />
+                ) : (
+                  <div style={{
+                    padding: '8px',
+                    backgroundColor: '#F8F8F8',
+                    border: '1px solid #CCCCCC',
+                    fontSize: '10px',
+                    color: '#666666'
+                  }}>
+                    {item.filename}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{ 
+              fontSize: '10px', 
+              fontWeight: 400, 
+              color: '#666666',
+              textAlign: 'center'
+            }}>
+              {item.type === 'note' ? 'Note' : 'File'}
+            </div>
+          </div>
+        ))}
+        
+        {/* Add button */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '10px',
+          padding: '24px 27px',
+          backgroundColor: '#F1EEEA',
+          border: '1px solid #000000',
+          cursor: 'pointer',
+          position: 'relative'
+        }}>
+          <button
+            type="button"
+            onClick={() => setShowAddOptions(!showAddOptions)}
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              width: '24px',
+              height: '24px',
+              backgroundColor: '#FFFFFF',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M12 5v14M5 12h14" stroke="#000000" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
+          
+          {showAddOptions && (
+            <div style={{
+              position: 'absolute',
+              bottom: '100%',
+              left: 0,
+              right: 0,
+              backgroundColor: '#FFFFFF',
+              border: '1px solid #000000',
+              padding: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              zIndex: 10,
+              fontFamily: 'Azeret Mono, monospace'
+            }}>
+              {/* Add Note button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAddingNote(true);
+                  setShowAddOptions(false);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 12px',
+                  backgroundColor: '#333333',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  letterSpacing: '0.5px'
+                }}
+              >
+                📝 Add Note
+              </button>
+
+              {/* Add Media button */}
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 12px',
+                backgroundColor: '#333333',
+                color: '#FFFFFF',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: 500,
+                letterSpacing: '0.5px'
+              }}>
+                <input
+                  type="file"
+                  onChange={handleFileUpload}
+                  style={{ display: 'none' }}
+                  accept="image/*,video/*,audio/*,.pdf,.txt,.doc,.docx"
+                />
+                📁 Add Media
+              </label>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Note input modal */}
+      {isAddingNote && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100
+        }}>
+          <div style={{
+            backgroundColor: '#FFFFFF',
+            border: '1px solid #000000',
+            padding: '24px',
+            width: '400px',
+            maxWidth: '90%',
+            fontFamily: 'Azeret Mono, monospace'
+          }}>
+            <h4 style={{ 
+              fontSize: '14px', 
+              fontWeight: 500, 
+              margin: '0 0 16px 0',
+              letterSpacing: '0.5px'
+            }}>
+              Add a Note
+            </h4>
+            <textarea
+              value={noteInput}
+              onChange={(e) => setNoteInput(e.target.value)}
+              placeholder="Enter your note here..."
+              style={{
+                width: '100%',
+                height: '120px',
+                padding: '12px',
+                border: '1px solid #CCCCCC',
+                fontSize: '12px',
+                fontFamily: 'Azeret Mono, monospace',
+                resize: 'none',
+                marginBottom: '16px'
+              }}
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAddingNote(false);
+                  setNoteInput('');
+                }}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#F8F8F8',
+                  border: '1px solid #CCCCCC',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontFamily: 'Azeret Mono, monospace'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAddNote}
+                disabled={!noteInput.trim()}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: noteInput.trim() ? '#333333' : '#CCCCCC',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  cursor: noteInput.trim() ? 'pointer' : 'not-allowed',
+                  fontSize: '12px',
+                  fontFamily: 'Azeret Mono, monospace'
+                }}
+              >
+                Add Note
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AdditionalContextFolder; 
