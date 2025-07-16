@@ -70,7 +70,15 @@ const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-
+  const getFileTypeLabel = (fileType?: string) => {
+    if (!fileType) return 'File';
+    if (fileType.startsWith('image/')) return 'Image';
+    if (fileType.startsWith('video/')) return 'Video';
+    if (fileType.startsWith('audio/')) return 'Audio';
+    if (fileType.includes('pdf')) return 'PDF';
+    if (fileType.includes('text') || fileType.includes('document')) return 'Document';
+    return 'File';
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -89,7 +97,7 @@ const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
         gridTemplateRows: '240px 240px',
-        gap: '0px',
+        gap: '8px',
         maxWidth: '480px'
       }}>
         {items.map((item) => (
@@ -102,7 +110,7 @@ const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
               alignItems: 'center',
               gap: '10px',
               padding: '16px',
-              border: '1px solid #000000',
+              border: '0.39px solid #000000',
               backgroundColor: '#FFFFFF',
               fontSize: '12px',
               fontWeight: 300,
@@ -142,26 +150,28 @@ const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
               flex: 1,
               width: '100%'
             }}>
-              <div style={{ 
-                textAlign: 'left', 
-                width: '100%',
-                maxWidth: '220px',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
-              }}>
+              {item.type === 'file' && (
                 <div style={{ 
-                  fontSize: '12px', 
-                  fontWeight: 400,
+                  textAlign: 'left', 
+                  width: '100%',
+                  maxWidth: '220px',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap'
                 }}>
-                  {item.content}
+                  <div style={{ 
+                    fontSize: '12px', 
+                    fontWeight: 400,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {item.content}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* File preview or note indicator */}
+              {/* File preview or note content */}
               {item.type === 'file' && item.fileUrl && (
                 <div style={{ width: '100%', textAlign: 'center' }}>
                   {item.fileType?.startsWith('image/') ? (
@@ -169,9 +179,9 @@ const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
                       src={item.fileUrl}
                       alt={item.filename}
                       style={{
-                        maxWidth: '100%',
-                        maxHeight: '60px',
-                        objectFit: 'contain',
+                        width: '100%',
+                        maxHeight: '120px',
+                        objectFit: 'cover',
                         border: '1px solid #CCCCCC'
                       }}
                     />
@@ -188,6 +198,34 @@ const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
                   )}
                 </div>
               )}
+              
+              {/* Note content as body text */}
+              {item.type === 'note' && (
+                <div style={{ 
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '8px 0',
+                  flex: 1,
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    fontSize: '12px',
+                    fontWeight: 400,
+                    lineHeight: '1.4',
+                    color: '#333333',
+                    wordWrap: 'break-word',
+                    hyphens: 'auto',
+                    maxHeight: '160px',
+                    overflowY: 'auto',
+                    paddingRight: '4px',
+                    scrollbarWidth: 'none', /* Firefox */
+                    msOverflowStyle: 'none', /* IE and Edge */
+                  }}
+                  className="hide-scrollbar">
+                    {item.content}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Label pinned to bottom */}
@@ -198,7 +236,7 @@ const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
               textAlign: 'center',
               marginTop: 'auto'
             }}>
-              {item.type === 'note' ? 'Note' : 'File'}
+              {item.type === 'note' ? 'Note' : getFileTypeLabel(item.fileType)}
             </div>
           </div>
         ))}
@@ -241,7 +279,7 @@ const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
               left: 0,
               right: 0,
               backgroundColor: '#FFFFFF',
-              border: '1px solid #000000',
+              border: '0.39px solid #000000',
               padding: '12px',
               display: 'flex',
               flexDirection: 'column',
