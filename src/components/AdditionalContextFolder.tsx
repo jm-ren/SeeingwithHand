@@ -70,15 +70,7 @@ const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const getFileTypeIcon = (fileType?: string) => {
-    if (!fileType) return '📄';
-    if (fileType.startsWith('image/')) return '🖼️';
-    if (fileType.startsWith('video/')) return '🎥';
-    if (fileType.startsWith('audio/')) return '🎵';
-    if (fileType.includes('pdf')) return '📕';
-    if (fileType.includes('text')) return '📝';
-    return '📄';
-  };
+
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -96,8 +88,9 @@ const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
       <div style={{
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
+        gridTemplateRows: '240px 240px',
         gap: '0px',
-        minHeight: '313px'
+        maxWidth: '480px'
       }}>
         {items.map((item) => (
           <div
@@ -105,7 +98,7 @@ const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
             style={{
               display: 'flex',
               flexDirection: 'column',
-              justifyContent: 'center',
+              justifyContent: 'space-between',
               alignItems: 'center',
               gap: '10px',
               padding: '16px',
@@ -115,10 +108,12 @@ const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
               fontWeight: 300,
               letterSpacing: '-4%',
               position: 'relative',
-              fontFamily: 'Azeret Mono, monospace'
+              fontFamily: 'Azeret Mono, monospace',
+              height: '240px',
+              boxSizing: 'border-box'
             }}
           >
-            {/* Remove button */}
+                        {/* Remove button */}
             <button
               type="button"
               onClick={() => onRemoveItem(item.id)}
@@ -138,59 +133,70 @@ const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
               ×
             </button>
 
+            {/* Main content area */}
             <div style={{ 
-              textAlign: 'left', 
-              width: '100%',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '10px',
+              flex: 1,
+              width: '100%'
             }}>
-              {item.type === 'file' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                  <span>{getFileTypeIcon(item.fileType)}</span>
-                  <span style={{ fontSize: '10px', color: '#666666' }}>
-                    {item.fileSize ? formatFileSize(item.fileSize) : ''}
-                  </span>
+              <div style={{ 
+                textAlign: 'left', 
+                width: '100%',
+                maxWidth: '220px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                <div style={{ 
+                  fontSize: '12px', 
+                  fontWeight: 400,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {item.content}
+                </div>
+              </div>
+
+              {/* File preview or note indicator */}
+              {item.type === 'file' && item.fileUrl && (
+                <div style={{ width: '100%', textAlign: 'center' }}>
+                  {item.fileType?.startsWith('image/') ? (
+                    <img
+                      src={item.fileUrl}
+                      alt={item.filename}
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '60px',
+                        objectFit: 'contain',
+                        border: '1px solid #CCCCCC'
+                      }}
+                    />
+                  ) : (
+                    <div style={{
+                      padding: '8px',
+                      backgroundColor: '#F8F8F8',
+                      border: '1px solid #CCCCCC',
+                      fontSize: '10px',
+                      color: '#666666'
+                    }}>
+                      {item.filename}
+                    </div>
+                  )}
                 </div>
               )}
-              <div style={{ fontSize: '12px', fontWeight: 400 }}>
-                {item.content}
-              </div>
             </div>
 
-            {/* File preview or note indicator */}
-            {item.type === 'file' && item.fileUrl && (
-              <div style={{ width: '100%', textAlign: 'center' }}>
-                {item.fileType?.startsWith('image/') ? (
-                  <img
-                    src={item.fileUrl}
-                    alt={item.filename}
-                    style={{
-                      maxWidth: '100%',
-                      maxHeight: '60px',
-                      objectFit: 'contain',
-                      border: '1px solid #CCCCCC'
-                    }}
-                  />
-                ) : (
-                  <div style={{
-                    padding: '8px',
-                    backgroundColor: '#F8F8F8',
-                    border: '1px solid #CCCCCC',
-                    fontSize: '10px',
-                    color: '#666666'
-                  }}>
-                    {item.filename}
-                  </div>
-                )}
-              </div>
-            )}
-
+            {/* Label pinned to bottom */}
             <div style={{ 
               fontSize: '10px', 
               fontWeight: 400, 
               color: '#666666',
-              textAlign: 'center'
+              textAlign: 'center',
+              marginTop: 'auto'
             }}>
               {item.type === 'note' ? 'Note' : 'File'}
             </div>

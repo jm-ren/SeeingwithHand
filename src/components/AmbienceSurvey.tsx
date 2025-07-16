@@ -412,6 +412,7 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
                     onChange={(e) => handleInputChange('nickname', e.target.value)}
                     style={{
                       width: '100%',
+                      maxWidth: '300px',
                       padding: '8px 12px',
                       border: '1px solid #CCCCCC',
                       borderRadius: '0',
@@ -431,6 +432,7 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
                     onChange={(e) => handleInputChange('location', e.target.value)}
                     style={{
                       width: '100%',
+                      maxWidth: '300px',
                       padding: '8px 12px',
                       border: '1px solid #CCCCCC',
                       borderRadius: '0',
@@ -449,6 +451,7 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
                     onChange={(e) => handleInputChange('feelings', e.target.value)}
                     style={{
                       width: '100%',
+                      maxWidth: '400px',
                       padding: '8px 12px',
                       border: '1px solid #CCCCCC',
                       borderRadius: '0',
