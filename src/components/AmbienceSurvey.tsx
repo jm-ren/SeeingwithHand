@@ -128,9 +128,9 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
     const originalWidth = Math.max(maxX + 100, 1920);
     const originalHeight = Math.max(maxY + 100, 1080);
     
-    // Display dimensions
-    const displayWidth = 400;
-    const displayHeight = 300;
+         // Display dimensions
+     const displayWidth = 500;
+     const displayHeight = 375;
 
     // Simple approach: show annotations based on progress
     const totalAnnotations = annotations.length;
@@ -349,7 +349,7 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
                          {/* Inline Session Animation */}
              <div style={{ position: 'relative' }}>
                {/* Image with annotation overlay */}
-               <div style={{ position: 'relative', width: '400px', height: '300px', margin: '0 auto' }}>
+               <div style={{ position: 'relative', width: '500px', height: '375px', margin: '0 auto' }}>
                  <img
                    src={imageUrl}
                    alt="Session"
