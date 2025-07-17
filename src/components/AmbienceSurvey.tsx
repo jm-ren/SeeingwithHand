@@ -14,16 +14,18 @@ interface AmbienceSurveyProps {
   audioUrl?: string;
   onSubmit: (data: any) => void;
   onClose: () => void;
+  onViewReplay?: () => void;
 }
 
-const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
-  annotations,
-  groups,
-  sessionName,
-  imageUrl,
-  audioUrl,
-  onSubmit,
-  onClose
+const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({ 
+  annotations, 
+  groups, 
+  sessionName, 
+  imageUrl, 
+  audioUrl, 
+  onSubmit, 
+  onClose,
+  onViewReplay
 }) => {
   // Form state
   const [formData, setFormData] = useState({
@@ -469,6 +471,35 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
                   onAddItem={handleAddContextItem}
                   onRemoveItem={handleRemoveContextItem}
                 />
+                
+                {/* View Replay Button */}
+                {onViewReplay && (
+                  <button
+                    type="button"
+                    onClick={onViewReplay}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      width: '100%',
+                      padding: '12px 24px',
+                      backgroundColor: '#FFFFFF',
+                      color: '#323232',
+                      border: '1px solid #323232',
+                      borderRadius: '0',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      gap: '8px',
+                      marginBottom: '12px'
+                    }}
+                  >
+                    <svg width="15" height="13" viewBox="0 0 24 24" fill="none">
+                      <polygon points="5,3 19,12 5,21" fill="#323232"/>
+                    </svg>
+                    View Session Replay
+                  </button>
+                )}
                 
                 <button
                   type="submit"

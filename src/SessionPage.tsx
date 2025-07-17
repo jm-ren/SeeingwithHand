@@ -144,6 +144,10 @@ const SessionPageContent: React.FC<{ imageId?: string; sessionId?: string }> = (
           audioUrl={sessionSummary.audioUrl}
           onSubmit={handleSurveySubmit}
           onClose={() => setShowSurvey(false)}
+          onViewReplay={() => {
+            setShowSurvey(false);
+            setShowReplay(true);
+          }}
         />
       )}
 

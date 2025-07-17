@@ -42,30 +42,59 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
     return annotationTime <= currentTime;
   });
 
+  // Log annotation summary for debugging
+  useEffect(() => {
+    if (annotations.length > 0) {
+      console.log(`Session Replay loaded: ${annotations.length} annotations`);
+    }
+  }, [annotations]);
+
   // Progressive annotation drawing
   const drawProgressiveAnnotations = () => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
-    if (!canvas || !ctx) return;
+    const image = imageRef.current;
+    
+    if (!canvas || !ctx || !image || !image.complete) return;
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Get canvas dimensions
-    const canvasRect = canvas.getBoundingClientRect();
-    const canvasWidth = canvasRect.width;
-    const canvasHeight = canvasRect.height;
+    // Get scaling factors between original annotation coordinates and current display
+    const imageRect = image.getBoundingClientRect();
+    const containerRect = containerRef.current?.getBoundingClientRect();
+    
+    if (!containerRect) return;
+    
+    // Calculate the actual displayed image size (accounting for object-fit: contain)
+    const imageAspectRatio = image.naturalWidth / image.naturalHeight;
+    const containerAspectRatio = containerRect.width / containerRect.height;
+    
+    let displayedImageWidth, displayedImageHeight;
+    if (imageAspectRatio > containerAspectRatio) {
+      // Image is wider - fit to width
+      displayedImageWidth = containerRect.width;
+      displayedImageHeight = containerRect.width / imageAspectRatio;
+    } else {
+      // Image is taller - fit to height  
+      displayedImageHeight = Math.min(containerRect.height, 384); // maxHeight from CSS
+      displayedImageWidth = displayedImageHeight * imageAspectRatio;
+    }
+    
+    // Scale factor from original canvas to current display
+    const scaleX = displayedImageWidth / image.naturalWidth;
+    const scaleY = displayedImageHeight / image.naturalHeight;
+    
+    // Convert annotation coordinates to current canvas coordinates
+    const convertPoint = (point: any) => ({
+      x: point.x * scaleX,
+      y: point.y * scaleY
+    });
     
     // Draw each annotation progressively
     currentAnnotations.forEach((annotation) => {
       const annotationStartTime = annotation.timestamp - (annotations[0]?.timestamp || 0);
       const timeSinceStart = currentTime - annotationStartTime;
-      
-      // Convert percentage coordinates to canvas coordinates
-      const convertPoint = (point: any) => ({
-        x: (point.x / 100) * canvasWidth,
-        y: (point.y / 100) * canvasHeight
-      });
 
       ctx.strokeStyle = annotation.color || '#2CA800';
       ctx.fillStyle = annotation.color || '#2CA800';
@@ -135,7 +164,8 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
 
         case 'frame':
         case 'area':
-          if (annotation.points.length >= 2) {
+          if (annotation.points.length >= 3) {
+            // Modern polygon format - animate point by point
             const animationDuration = 1500; // 1.5 seconds to draw frame/area
             const animationProgress = Math.min(timeSinceStart / animationDuration, 1);
             const pointsToShow = Math.floor(annotation.points.length * animationProgress);
@@ -164,6 +194,33 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
                 ctx.globalAlpha = 1;
               }
             }
+          } else if (annotation.points.length === 2) {
+            // Legacy rectangle format - animate rectangle drawing
+            const animationDuration = 1500; // 1.5 seconds to draw rectangle
+            const animationProgress = Math.min(timeSinceStart / animationDuration, 1);
+            
+            if (animationProgress > 0) {
+              const startPoint = convertPoint(annotation.points[0]);
+              const endPoint = convertPoint(annotation.points[1]);
+              console.log('Rectangle points converted:', annotation.points, '->', { startPoint, endPoint });
+              
+              const fullWidth = endPoint.x - startPoint.x;
+              const fullHeight = endPoint.y - startPoint.y;
+              
+              // Animate rectangle drawing progressively
+              let currentWidth = fullWidth * animationProgress;
+              let currentHeight = fullHeight * animationProgress;
+              
+              ctx.beginPath();
+              ctx.strokeRect(startPoint.x, startPoint.y, currentWidth, currentHeight);
+              
+              // Fill if area and animation is complete
+              if (annotation.type === 'area' && animationProgress >= 1) {
+                ctx.globalAlpha = 0.2;
+                ctx.fillRect(startPoint.x, startPoint.y, fullWidth, fullHeight);
+                ctx.globalAlpha = 1;
+              }
+            }
           }
           break;
 
@@ -187,8 +244,20 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
     if (!canvas || !container) return;
 
     const containerRect = container.getBoundingClientRect();
+    
+    // Set canvas dimensions to match container
     canvas.width = containerRect.width;
     canvas.height = containerRect.height;
+    
+    // Position canvas to overlay the image perfectly
+    canvas.style.position = 'absolute';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.zIndex = '10';
+    canvas.style.pointerEvents = 'none';
+    
     drawProgressiveAnnotations();
   };
 
@@ -254,14 +323,14 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Handle image load
+  // Handle image load and initial setup
   useEffect(() => {
-    const img = imageRef.current;
-    if (img) {
-      img.onload = () => {
-        updateCanvasSize();
-      };
-    }
+    // Small delay to ensure refs are set after render
+    const timeout = setTimeout(() => {
+      updateCanvasSize();
+    }, 100);
+    
+    return () => clearTimeout(timeout);
   }, []);
 
   return (

@@ -141,6 +141,13 @@ function applicationReducer(state: ApplicationState, action: ApplicationAction):
         timestamp: Date.now(),
       };
       
+      console.log(`💾 Adding annotation to state:`, {
+        type: newAnnotation.type,
+        pointsCount: newAnnotation.points.length,
+        points: newAnnotation.points,
+        id: newAnnotation.id
+      });
+      
       const newAnnotations = [...state.annotations, newAnnotation];
       return {
         ...state,

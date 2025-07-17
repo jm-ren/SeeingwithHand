@@ -619,6 +619,20 @@ const AnnotationCanvas = ({
                 height
               );
             }
+            
+            // Show instruction text for polygon creation
+            if (isCreatingPolygon && currentAnnotation.length >= 1) {
+              ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+              ctx.fillRect(10, 10, 300, 60);
+              ctx.fillStyle = "rgba(0, 0, 0, 1)";
+              ctx.font = "14px Arial";
+              ctx.fillText(`Creating ${selectedTool}: Click to add points`, 15, 30);
+              if (currentAnnotation.length >= 3) {
+                ctx.fillText("Click near the first point (green circle) to close", 15, 50);
+              } else {
+                ctx.fillText(`${currentAnnotation.length} points added`, 15, 50);
+              }
+            }
             break;
           case "area":
             // Draw as filled polygon in creation mode - Use isPreviewMode=true for the current polygon being created
@@ -663,6 +677,20 @@ const AnnotationCanvas = ({
                 width,
                 height
               );
+            }
+            
+            // Show instruction text for polygon creation (area)
+            if (isCreatingPolygon && currentAnnotation.length >= 1 && selectedTool === "area") {
+              ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+              ctx.fillRect(10, 10, 300, 60);
+              ctx.fillStyle = "rgba(0, 0, 0, 1)";
+              ctx.font = "14px Arial";
+              ctx.fillText(`Creating ${selectedTool}: Click to add points`, 15, 30);
+              if (currentAnnotation.length >= 3) {
+                ctx.fillText("Click near the first point (green circle) to close", 15, 50);
+              } else {
+                ctx.fillText(`${currentAnnotation.length} points added`, 15, 50);
+              }
             }
             break;
           case "freehand":
@@ -1241,24 +1269,39 @@ const AnnotationCanvas = ({
         
       case "frame":
       case "area":
+        console.log(`🔹 ${selectedTool} tool clicked:`, {
+          isCreatingPolygon,
+          currentAnnotationLength: currentAnnotation.length,
+          clickPoint,
+          currentAnnotation
+        });
+        
         // Polygon creation mode
         if (!isCreatingPolygon) {
+          console.log(`🚀 Starting new ${selectedTool} polygon`);
           setIsCreatingPolygon(true);
           setCurrentAnnotation([clickPoint]);
         } else {
           // Check if clicking near the first point to close polygon
-          if (currentAnnotation.length >= 3 && 
-              isPointNearPoint(clickPoint, currentAnnotation[0], 15)) {
+          const distanceToFirst = currentAnnotation.length >= 3 ? 
+            Math.hypot(clickPoint.x - currentAnnotation[0].x, clickPoint.y - currentAnnotation[0].y) : 
+            Infinity;
+          
+          console.log(`🎯 Distance to first point: ${distanceToFirst.toFixed(2)} (threshold: 15)`);
+          
+          if (currentAnnotation.length >= 3 && distanceToFirst <= 15) {
+            console.log(`✅ Closing ${selectedTool} polygon with ${currentAnnotation.length} points:`, currentAnnotation);
             // Close polygon
             addAnnotation({
               type: selectedTool,
-              points: currentAnnotation,
+              points: [...currentAnnotation], // Create new array to avoid reference issues
               color: selectedColor,
               selected: false,
             });
             setCurrentAnnotation([]);
             setIsCreatingPolygon(false);
           } else {
+            console.log(`➕ Adding point to ${selectedTool} polygon. New length:`, currentAnnotation.length + 1);
             // Add point to polygon
             setCurrentAnnotation(prev => [...prev, clickPoint]);
           }
