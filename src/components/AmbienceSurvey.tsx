@@ -36,7 +36,7 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
     feelings: ''
   });
 
-  // Animation state
+  // Animation state for inline replay
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
@@ -84,6 +84,15 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  // Handle additional context
+  const handleAddContextItem = (item: AdditionalContextItem) => {
+    setContextItems(prev => [...prev, item]);
+  };
+
+  const handleRemoveContextItem = (id: string) => {
+    setContextItems(prev => prev.filter(item => item.id !== id));
+  };
+
   // Handle animation controls
   const handlePlayPause = () => {
     setIsPlaying(!isPlaying);
@@ -96,15 +105,6 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
 
   const handleSpeedToggle = () => {
     setPlaybackSpeed(prev => prev === 1 ? 2 : 1);
-  };
-
-  // Handle additional context
-  const handleAddContextItem = (item: AdditionalContextItem) => {
-    setContextItems(prev => [...prev, item]);
-  };
-
-  const handleRemoveContextItem = (id: string) => {
-    setContextItems(prev => prev.filter(item => item.id !== id));
   };
 
   // Progressive annotation rendering
@@ -129,8 +129,8 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
     const originalHeight = Math.max(maxY + 100, 1080);
     
     // Display dimensions
-    const displayWidth = 646.5;
-    const displayHeight = 431;
+    const displayWidth = 400;
+    const displayHeight = 300;
 
     // Simple approach: show annotations based on progress
     const totalAnnotations = annotations.length;
@@ -149,7 +149,7 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
             key={annotation.id}
             d={pathData}
             stroke={annotation.color || '#2CA800'}
-            strokeWidth="3"
+            strokeWidth="2"
             fill="none"
             opacity={0.8}
             strokeLinecap="round"
@@ -173,29 +173,86 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
             x2={endX}
             y2={endY}
             stroke={annotation.color || '#2CA800'}
-            strokeWidth="3"
+            strokeWidth="2"
             opacity={0.8}
             strokeLinecap="round"
           />
         );
-      } else if (annotation.type === 'point' && annotation.points && annotation.points.length > 0) {
-        const point = annotation.points[0];
-        const x = (point.x / originalWidth) * displayWidth;
-        const y = (point.y / originalHeight) * displayHeight;
-        
-        return (
-          <circle
-            key={annotation.id}
-            cx={x}
-            cy={y}
-            r="6"
-            fill={annotation.color || '#2CA800'}
-            opacity={0.8}
-          />
-        );
-      }
-      
-      return null;
+             } else if (annotation.type === 'point' && annotation.points && annotation.points.length > 0) {
+         const point = annotation.points[0];
+         const x = (point.x / originalWidth) * displayWidth;
+         const y = (point.y / originalHeight) * displayHeight;
+         
+         return (
+           <circle
+             key={annotation.id}
+             cx={x}
+             cy={y}
+             r="4"
+             fill={annotation.color || '#2CA800'}
+             opacity={0.8}
+           />
+         );
+       } else if ((annotation.type === 'frame' || annotation.type === 'area') && annotation.points && annotation.points.length > 0) {
+         if (annotation.points.length >= 3) {
+           // Modern polygon format - show progressively based on animation progress
+           const pointsToShow = Math.max(1, Math.floor(annotation.points.length * Math.min(progress + 0.1, 1)));
+           
+           const pathData = annotation.points.slice(0, pointsToShow).map((point, i) => {
+             const x = (point.x / originalWidth) * displayWidth;
+             const y = (point.y / originalHeight) * displayHeight;
+             return i === 0 ? `M ${x} ${y}` : `L ${x} ${y}`;
+           }).join(' ');
+           
+           // Close path if we've shown all points
+           const finalPath = pointsToShow >= annotation.points.length ? pathData + ' Z' : pathData;
+           
+           return (
+             <g key={annotation.id}>
+               <path
+                 d={finalPath}
+                 stroke={annotation.color || '#2CA800'}
+                 strokeWidth="2"
+                 fill={annotation.type === 'area' && pointsToShow >= annotation.points.length ? annotation.color || '#2CA800' : 'none'}
+                 fillOpacity={annotation.type === 'area' && pointsToShow >= annotation.points.length ? 0.2 : 0}
+                 opacity={0.8}
+                 strokeLinecap="round"
+                 strokeLinejoin="round"
+               />
+             </g>
+           );
+         } else if (annotation.points.length === 2) {
+           // Legacy rectangle format
+           const startPoint = annotation.points[0];
+           const endPoint = annotation.points[1];
+           
+           const startX = (startPoint.x / originalWidth) * displayWidth;
+           const startY = (startPoint.y / originalHeight) * displayHeight;
+           const endX = (endPoint.x / originalWidth) * displayWidth;
+           const endY = (endPoint.y / originalHeight) * displayHeight;
+           
+           const width = endX - startX;
+           const height = endY - startY;
+           
+           return (
+             <g key={annotation.id}>
+               <rect
+                 x={startX}
+                 y={startY}
+                 width={width}
+                 height={height}
+                 stroke={annotation.color || '#2CA800'}
+                 strokeWidth="2"
+                 fill={annotation.type === 'area' ? annotation.color || '#2CA800' : 'none'}
+                 fillOpacity={annotation.type === 'area' ? 0.2 : 0}
+                 opacity={0.8}
+               />
+             </g>
+           );
+         }
+       }
+       
+       return null;
     }).filter(Boolean);
   };
 
@@ -233,171 +290,253 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 50,
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+      <div style={{
+        backgroundColor: '#FBFAF8',
+        border: '1px solid #666666',
+        borderRadius: '0',
+        maxWidth: '1200px',
+        width: '95%',
+        maxHeight: '95vh',
+        overflowY: 'auto',
         fontFamily: 'Azeret Mono, monospace',
-        padding: '20px'
-      }}
-    >
-      <div
-        style={{
-          backgroundColor: '#FCFCF9',
-          border: '1px solid #000000',
-          borderRadius: '0',
-          width: '100%',
-          maxWidth: '1200px',
-          maxHeight: '90vh',
-          overflowY: 'auto',
-          position: 'relative'
-        }}
-      >
-        {/* Header with logo and exit button */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '20px 27px',
-            borderBottom: '1px solid #CCCCCC'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ fontSize: '15px', fontWeight: 600, letterSpacing: '9%' }}>
-              co-see
+        display: 'flex',
+        gap: '24px'
+      }}>
+        {/* Left Panel - Session Replay */}
+        <div style={{ 
+          flex: '1 1 50%', 
+          padding: '24px',
+          minWidth: '400px'
+        }}>
+          {/* Session Replay - embedded directly without modal wrapper */}
+          <div style={{
+            backgroundColor: 'transparent',
+            border: 'none',
+            borderRadius: '0',
+            padding: '16px',
+            fontFamily: 'Azeret Mono, monospace'
+          }}>
+            {/* Replay Header */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              marginBottom: '16px',
+              borderBottom: '1px solid #CCCCCC',
+              paddingBottom: '12px'
+            }}>
+              <div style={{
+                fontSize: '14px',
+                fontFamily: 'Azeret Mono, monospace',
+                fontWeight: 500,
+                letterSpacing: '0.5px',
+                color: '#333333'
+              }}>
+                Session Playback
+              </div>
+              <div style={{
+                fontSize: '11px',
+                fontFamily: 'Azeret Mono, monospace',
+                fontWeight: 400,
+                letterSpacing: '0.5px',
+                color: '#666666'
+              }}>
+                {getCurrentDate()} • 4 mins
+              </div>
             </div>
+
+                         {/* Inline Session Animation */}
+             <div style={{ position: 'relative' }}>
+               {/* Image with annotation overlay */}
+               <div style={{ position: 'relative', width: '400px', height: '300px', margin: '0 auto' }}>
+                 <img
+                   src={imageUrl}
+                   alt="Session"
+                   style={{
+                     width: '100%',
+                     height: '100%',
+                     objectFit: 'cover',
+                     border: '1px solid #CCCCCC'
+                   }}
+                 />
+                 {/* Traces overlay */}
+                 <div style={{
+                   position: 'absolute',
+                   top: 0,
+                   left: 0,
+                   right: 0,
+                   bottom: 0,
+                   pointerEvents: 'none'
+                 }}>
+                   <svg
+                     width="100%"
+                     height="100%"
+                     style={{ 
+                       position: 'absolute', 
+                       top: 0, 
+                       left: 0 
+                     }}
+                   >
+                     {renderProgressiveAnnotations()}
+                   </svg>
+                 </div>
+               </div>
+
+               {/* Animation controls */}
+               <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center', marginTop: '12px' }}>
+                 <button
+                   onClick={handlePlayPause}
+                   style={{
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: '4px',
+                     padding: '6px 12px',
+                     border: '1px solid #666666',
+                     borderRadius: '0',
+                     backgroundColor: '#FFFFFF',
+                     color: '#333333',
+                     cursor: 'pointer',
+                     fontSize: '11px'
+                   }}
+                 >
+                   {isPlaying ? <Pause size={14} /> : <Play size={14} />}
+                   {isPlaying ? 'Pause' : 'Play'}
+                 </button>
+                 <button
+                   onClick={handleRestart}
+                   style={{
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: '4px',
+                     padding: '6px 12px',
+                     border: '1px solid #666666',
+                     borderRadius: '0',
+                     backgroundColor: '#FFFFFF',
+                     color: '#333333',
+                     cursor: 'pointer',
+                     fontSize: '11px'
+                   }}
+                 >
+                   <RotateCcw size={14} />
+                   Restart
+                 </button>
+                 <button
+                   onClick={handleSpeedToggle}
+                   style={{
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: '4px',
+                     padding: '6px 12px',
+                     border: '1px solid #666666',
+                     borderRadius: '0',
+                     backgroundColor: '#FFFFFF',
+                     color: '#333333',
+                     cursor: 'pointer',
+                     fontSize: '11px'
+                   }}
+                 >
+                   <FastForward size={14} />
+                   {playbackSpeed}x
+                 </button>
+                 <div style={{ fontSize: '11px', marginLeft: '8px', color: '#666' }}>
+                   {Math.round(progress * 100)}%
+                 </div>
+               </div>
+
+               {/* Eye Visualization - temporarily hidden */}
+               {false && (
+                 <div style={{ 
+                   backgroundColor: '#F8F8F8', 
+                   border: '1px solid #CCCCCC',
+                   padding: '16px', 
+                   display: 'flex', 
+                   justifyContent: 'center',
+                   marginTop: '12px'
+                 }}>
+                   <EyeVisualization
+                     annotations={annotations}
+                     isPlaying={isPlaying}
+                     progress={progress * 100}
+                     playbackSpeed={playbackSpeed}
+                   />
+                 </div>
+               )}
+             </div>
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              width: '24px',
-              height: '24px',
-              border: 'none',
-              backgroundColor: 'transparent',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <svg width="12.64" height="12.64" viewBox="0 0 24 24" fill="none">
-              <path d="M18 6L6 18M6 6l12 12" stroke="#000000" strokeWidth="2"/>
-            </svg>
-          </button>
         </div>
 
-        {/* Main content */}
-        <div style={{ display: 'flex', gap: '26px', padding: '0 27px 0 19px' }}>
-          {/* Left panel - Animation section */}
-          <div style={{ width: '645px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '36px', padding: '32px 0' }}>
-              {/* Session info */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', gap: '20px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 500, color: '#757575' }}>
-                    {getCurrentDate()}
-                  </span>
-                  <span style={{ fontSize: '12px', fontWeight: 500, color: '#757575' }}>
-                    {getCurrentTime()}
-                  </span>
-                  <span style={{ fontSize: '12px', fontWeight: 500, color: '#757575' }}>
-                    4 mins
-                  </span>
-                </div>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <h3 style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '1%', margin: 0 }}>
-                    {imageUrl.includes('agnes') ? 'agnes martin in new mexico' : 'Session Image'}
-                  </h3>
-                  <div style={{ width: '100%', height: '1px', backgroundColor: '#000000' }}></div>
-                  <h4 style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '1%', margin: 0 }}>
-                    {sessionName}
-                  </h4>
-                </div>
-              </div>
-
-              {/* Session image with traces */}
-              <div style={{ position: 'relative', width: '646.5px', height: '431px' }}>
-                <img
-                  src={imageUrl}
-                  alt="Session"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    border: '1px solid #CCCCCC'
-                  }}
-                />
-                {/* Traces overlay */}
-                <div style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  pointerEvents: 'none'
-                }}>
-                  <svg
-                    width="100%"
-                    height="100%"
-                    style={{ 
-                      position: 'absolute', 
-                      top: 0, 
-                      left: 0 
-                    }}
-                  >
-                    {renderProgressiveAnnotations()}
-                  </svg>
-                </div>
-              </div>
-
-              {/* Animation controls */}
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <Button
-                  onClick={handlePlayPause}
-                  size="sm"
-                  variant="outline"
-                  style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
-                >
-                  {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-                  {isPlaying ? 'Pause' : 'Play'}
-                </Button>
-                <Button
-                  onClick={handleRestart}
-                  size="sm"
-                  variant="outline"
-                  style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
-                >
-                  <RotateCcw size={16} />
-                  Restart
-                </Button>
-                <Button
-                  onClick={handleSpeedToggle}
-                  size="sm"
-                  variant="outline"
-                  style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
-                >
-                  <FastForward size={16} />
-                  {playbackSpeed}x
-                </Button>
-                <div style={{ fontSize: '12px', marginLeft: '10px', color: '#666' }}>
-                  {Math.round(progress * 100)}%
-                </div>
+        {/* Right Panel - Form */}
+        <div style={{ 
+          flex: '1 1 50%', 
+          padding: '24px',
+          backgroundColor: '#FFFFFF',
+          border: '1px solid #666666',
+          borderRadius: '0',
+          minWidth: '400px'
+        }}>
+          {/* Header */}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            marginBottom: '24px',
+            borderBottom: '1px solid #CCCCCC',
+            paddingBottom: '12px'
+          }}>
+            <div>
+              <h1 style={{
+                fontSize: '16px',
+                fontFamily: 'Azeret Mono, monospace',
+                fontWeight: 600,
+                letterSpacing: '0.5px',
+                color: '#333333',
+                margin: '0 0 4px 0'
+              }}>
+                {sessionName}
+              </h1>
+              <div style={{
+                fontSize: '11px',
+                fontFamily: 'Azeret Mono, monospace',
+                fontWeight: 400,
+                letterSpacing: '0.5px',
+                color: '#666666'
+              }}>
+                {getCurrentDate()} • {getCurrentTime()}
               </div>
             </div>
+            <button
+              onClick={onClose}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '32px',
+                height: '32px',
+                border: '1px solid #666666',
+                borderRadius: '0',
+                backgroundColor: '#FFFFFF',
+                color: '#666666',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#666666';
+                e.currentTarget.style.color = '#FFFFFF';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#FFFFFF';
+                e.currentTarget.style.color = '#666666';
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18"/>
+                <path d="M6 6l12 12"/>
+              </svg>
+            </button>
           </div>
 
-          {/* Right panel - Survey form */}
-          <div style={{ flex: 1, padding: '32px 0' }}>
+          <div style={{ flex: 1, padding: '0', overflowY: 'auto' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <h2 style={{ fontSize: '16px', fontWeight: 600, margin: 0 }}>
                 Session Reflection
@@ -446,60 +585,100 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
                 
                 <div>
                   <label style={{ fontSize: '12px', display: 'block', marginBottom: '5px', fontWeight: 500 }}>
-                    How you feel about this session
+                    What is the weather like now?
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {[
+                      { value: 'sunny', icon: '☀️' },
+                      { value: 'cloudy', icon: '☁️' },
+                      { value: 'rainy', icon: '🌧️' },
+                      { value: 'snowy', icon: '❄️' }
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => handleInputChange('weather', option.value)}
+                        style={{
+                          flex: 1,
+                          padding: '8px',
+                          border: '1px solid #CCCCCC',
+                          borderRadius: '0',
+                          backgroundColor: formData.weather === option.value ? '#333333' : '#FFFFFF',
+                          color: formData.weather === option.value ? '#FFFFFF' : '#333333',
+                          cursor: 'pointer',
+                          fontSize: '16px'
+                        }}
+                      >
+                        {option.icon}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                <div>
+                  <label style={{ fontSize: '12px', display: 'block', marginBottom: '5px', fontWeight: 500 }}>
+                    How are you feeling?
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {[
+                      { value: 'happy', icon: '😊' },
+                      { value: 'calm', icon: '😌' },
+                      { value: 'excited', icon: '😄' },
+                      { value: 'thoughtful', icon: '🤔' }
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => handleInputChange('mood', option.value)}
+                        style={{
+                          flex: 1,
+                          padding: '8px',
+                          border: '1px solid #CCCCCC',
+                          borderRadius: '0',
+                          backgroundColor: formData.mood === option.value ? '#333333' : '#FFFFFF',
+                          color: formData.mood === option.value ? '#FFFFFF' : '#333333',
+                          cursor: 'pointer',
+                          fontSize: '16px'
+                        }}
+                      >
+                        {option.icon}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                <div>
+                  <label style={{ fontSize: '12px', display: 'block', marginBottom: '5px', fontWeight: 500 }}>
+                    Share more about how you feel (optional)
                   </label>
                   <textarea
                     value={formData.feelings}
                     onChange={(e) => handleInputChange('feelings', e.target.value)}
+                    rows={3}
                     style={{
                       width: '100%',
-                      maxWidth: '400px',
                       padding: '8px 12px',
                       border: '1px solid #CCCCCC',
                       borderRadius: '0',
                       fontSize: '12px',
                       fontFamily: 'inherit',
-                      height: '80px',
                       resize: 'vertical'
                     }}
-                    placeholder="Share your thoughts about this seeing session..."
+                    placeholder="Tell us about your experience..."
                   />
                 </div>
 
-                <AdditionalContextFolder
-                  items={contextItems}
-                  onAddItem={handleAddContextItem}
-                  onRemoveItem={handleRemoveContextItem}
-                />
-                
-                {/* View Replay Button */}
-                {onViewReplay && (
-                  <button
-                    type="button"
-                    onClick={onViewReplay}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      width: '100%',
-                      padding: '12px 24px',
-                      backgroundColor: '#FFFFFF',
-                      color: '#323232',
-                      border: '1px solid #323232',
-                      borderRadius: '0',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      fontWeight: 500,
-                      gap: '8px',
-                      marginBottom: '12px'
-                    }}
-                  >
-                    <svg width="15" height="13" viewBox="0 0 24 24" fill="none">
-                      <polygon points="5,3 19,12 5,21" fill="#323232"/>
-                    </svg>
-                    View Session Replay
-                  </button>
-                )}
+                                 {/* Additional Context Section */}
+                 <div>
+                   <label style={{ fontSize: '12px', display: 'block', marginBottom: '8px', fontWeight: 500 }}>
+                     Additional Context
+                   </label>
+                   <AdditionalContextFolder
+                     items={contextItems}
+                     onAddItem={handleAddContextItem}
+                     onRemoveItem={handleRemoveContextItem}
+                   />
+                 </div>
                 
                 <button
                   type="submit"
