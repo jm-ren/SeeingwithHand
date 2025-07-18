@@ -656,9 +656,6 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
         <div style={{ 
           flex: '1 1 50%', 
           padding: '24px',
-          backgroundColor: '#FFFFFF',
-          border: '1px solid #666666',
-          borderRadius: '0',
           minWidth: '400px'
         }}>
           {/* Header */}
@@ -856,9 +853,6 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
 
                                  {/* Additional Context Section */}
                  <div>
-                   <label style={{ fontSize: '12px', display: 'block', marginBottom: '8px', fontWeight: 500 }}>
-                     Additional Context
-                   </label>
                    <AdditionalContextFolder
                      items={contextItems}
                      onAddItem={handleAddContextItem}

@@ -92,6 +92,18 @@ const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
         Additional Context
       </h3>
       
+      <div style={{
+        fontSize: '11px',
+        fontFamily: 'Azeret Mono, monospace',
+        fontWeight: 400,
+        letterSpacing: '0.5px',
+        color: '#666666',
+        marginTop: '-8px',
+        marginBottom: '8px'
+      }}>
+        what slipped into your mind now? Are there any memories, reflections, references you want to attach here?
+      </div>
+      
       {/* Context items grid */}
       <div style={{
         display: 'grid',
@@ -110,7 +122,7 @@ const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
               alignItems: 'center',
               gap: '10px',
               padding: '16px',
-              border: '0.39px solid #000000',
+              border: '0.39px solid #666666',
               backgroundColor: '#FFFFFF',
               fontSize: '12px',
               fontWeight: 300,
@@ -249,7 +261,7 @@ const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
           gap: '10px',
           padding: '24px 27px',
           backgroundColor: '#F1EEEA',
-          border: '1px solid #000000',
+          border: '1px solid #666666',
           cursor: 'pointer',
           position: 'relative'
         }}>
@@ -268,7 +280,7 @@ const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
             }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M12 5v14M5 12h14" stroke="#000000" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M12 5v14M5 12h14" stroke="#666666" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </button>
           
@@ -279,7 +291,7 @@ const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
               left: 0,
               right: 0,
               backgroundColor: '#FFFFFF',
-              border: '0.39px solid #000000',
+              border: '0.39px solid #666666',
               padding: '12px',
               display: 'flex',
               flexDirection: 'column',
@@ -353,7 +365,7 @@ const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
         }}>
           <div style={{
             backgroundColor: '#FFFFFF',
-            border: '1px solid #000000',
+            border: '1px solid #666666',
             padding: '24px',
             width: '400px',
             maxWidth: '90%',
