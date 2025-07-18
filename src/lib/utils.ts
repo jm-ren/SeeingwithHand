@@ -158,3 +158,118 @@ export function debounce<T extends (...args: any[]) => any>(
     }, delay)
   }
 }
+
+/**
+ * Calculates image scaling and positioning within a container
+ * @param imageWidth Natural width of the image
+ * @param imageHeight Natural height of the image
+ * @param containerWidth Width of the container
+ * @param containerHeight Height of the container
+ * @param maxHeight Optional maximum height constraint
+ * @returns Object with scaling and positioning information
+ */
+export interface ImageScaling {
+  displayWidth: number;
+  displayHeight: number;
+  offsetX: number;
+  offsetY: number;
+  scaleX: number;
+  scaleY: number;
+}
+
+export function calculateImageScaling(
+  imageWidth: number,
+  imageHeight: number,
+  containerWidth: number,
+  containerHeight: number,
+  maxHeight?: number
+): ImageScaling {
+  const imageAspectRatio = imageWidth / imageHeight;
+  
+  // Apply max height constraint if provided
+  const effectiveContainerHeight = maxHeight ? Math.min(containerHeight, maxHeight) : containerHeight;
+  const containerAspectRatio = containerWidth / effectiveContainerHeight;
+
+  let displayWidth: number;
+  let displayHeight: number;
+  let offsetX = 0;
+  let offsetY = 0;
+
+  if (imageAspectRatio > containerAspectRatio) {
+    // Image is wider than container aspect ratio - fit to width
+    displayWidth = containerWidth;
+    displayHeight = containerWidth / imageAspectRatio;
+    offsetY = (effectiveContainerHeight - displayHeight) / 2;
+  } else {
+    // Image is taller than container aspect ratio - fit to height
+    displayHeight = effectiveContainerHeight;
+    displayWidth = effectiveContainerHeight * imageAspectRatio;
+    offsetX = (containerWidth - displayWidth) / 2;
+  }
+
+  // Calculate scale factors from original image to display
+  const scaleX = displayWidth / imageWidth;
+  const scaleY = displayHeight / imageHeight;
+
+  return {
+    displayWidth,
+    displayHeight,
+    offsetX,
+    offsetY,
+    scaleX,
+    scaleY
+  };
+}
+
+/**
+ * Converts a point from original image coordinates to display coordinates
+ * @param point Point in original image coordinates
+ * @param scaling Image scaling information
+ * @returns Point in display coordinates
+ */
+export function imagePointToDisplay(point: Point, scaling: ImageScaling): Point {
+  return {
+    x: point.x * scaling.scaleX + scaling.offsetX,
+    y: point.y * scaling.scaleY + scaling.offsetY
+  };
+}
+
+/**
+ * Converts a point from display coordinates to original image coordinates
+ * @param point Point in display coordinates
+ * @param scaling Image scaling information
+ * @returns Point in original image coordinates
+ */
+export function displayPointToImage(point: Point, scaling: ImageScaling): Point {
+  return {
+    x: (point.x - scaling.offsetX) / scaling.scaleX,
+    y: (point.y - scaling.offsetY) / scaling.scaleY
+  };
+}
+
+/**
+ * Creates a coordinate transformation function for converting annotation points during playback
+ * @param originalImageWidth Width of image when annotations were recorded
+ * @param originalImageHeight Height of image when annotations were recorded
+ * @param currentContainerWidth Current display container width
+ * @param currentContainerHeight Current display container height
+ * @param maxHeight Optional maximum height constraint
+ * @returns Function to transform points from original to current coordinates
+ */
+export function createCoordinateTransform(
+  originalImageWidth: number,
+  originalImageHeight: number,
+  currentContainerWidth: number,
+  currentContainerHeight: number,
+  maxHeight?: number
+) {
+  const scaling = calculateImageScaling(
+    originalImageWidth,
+    originalImageHeight,
+    currentContainerWidth,
+    currentContainerHeight,
+    maxHeight
+  );
+
+  return (point: Point): Point => imagePointToDisplay(point, scaling);
+}

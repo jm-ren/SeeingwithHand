@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Annotation, Group } from '../types/annotations';
 import EyeVisualization from './EyeVisualization';
 import Legend from './Legend';
+import { createCoordinateTransform } from '../lib/utils';
 
 interface SessionReplayProps {
   annotations: Annotation[];
@@ -60,35 +61,62 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Get scaling factors between original annotation coordinates and current display
-    const imageRect = image.getBoundingClientRect();
     const containerRect = containerRef.current?.getBoundingClientRect();
-    
     if (!containerRect) return;
     
-    // Calculate the actual displayed image size (accounting for object-fit: contain)
+    // Calculate how the image is positioned within its container (object-fit: contain)
     const imageAspectRatio = image.naturalWidth / image.naturalHeight;
     const containerAspectRatio = containerRect.width / containerRect.height;
     
-    let displayedImageWidth, displayedImageHeight;
+    let renderedImageWidth, renderedImageHeight, imageOffsetX, imageOffsetY;
+    
     if (imageAspectRatio > containerAspectRatio) {
-      // Image is wider - fit to width
-      displayedImageWidth = containerRect.width;
-      displayedImageHeight = containerRect.width / imageAspectRatio;
+      // Image is wider - constrained by container width
+      renderedImageWidth = containerRect.width;
+      renderedImageHeight = containerRect.width / imageAspectRatio;
+      imageOffsetX = 0;
+      imageOffsetY = (containerRect.height - renderedImageHeight) / 2;
     } else {
-      // Image is taller - fit to height  
-      displayedImageHeight = Math.min(containerRect.height, 384); // maxHeight from CSS
-      displayedImageWidth = displayedImageHeight * imageAspectRatio;
+      // Image is taller - constrained by container height  
+      renderedImageWidth = containerRect.height * imageAspectRatio;
+      renderedImageHeight = containerRect.height;
+      imageOffsetX = (containerRect.width - renderedImageWidth) / 2;
+      imageOffsetY = 0;
     }
+
+    // Recording dimensions and position (from debug output)
+    const recordingCanvasWidth = 1652;
+    const recordingCanvasHeight = 1095.13;
+    const recordingImageOffsetX = 0;
+    const recordingImageOffsetY = 128.43; // The image was offset during recording
     
-    // Scale factor from original canvas to current display
-    const scaleX = displayedImageWidth / image.naturalWidth;
-    const scaleY = displayedImageHeight / image.naturalHeight;
-    
-    // Convert annotation coordinates to current canvas coordinates
-    const convertPoint = (point: any) => ({
-      x: point.x * scaleX,
-      y: point.y * scaleY
+    // Create coordinate transformer that converts from recording space to actual image space
+    const convertPoint = (point: { x: number; y: number }) => {
+      // First, convert from canvas coordinates to image coordinates during recording
+      const recordingImageX = point.x - recordingImageOffsetX;
+      const recordingImageY = point.y - recordingImageOffsetY;
+      
+      // Then scale from recording image size to current rendered image size
+      const scaleX = renderedImageWidth / recordingCanvasWidth;
+      const scaleY = renderedImageHeight / recordingCanvasHeight;
+      
+      // Finally, add the current image offset
+      return {
+        x: (recordingImageX * scaleX) + imageOffsetX,
+        y: (recordingImageY * scaleY) + imageOffsetY
+      };
+    };
+
+    // DEBUG: Log coordinate transformation details
+    console.log('🎯 SessionReplay Coordinate Transformation:', {
+      container: { width: containerRect.width, height: containerRect.height },
+      renderedImage: { width: renderedImageWidth, height: renderedImageHeight },
+      imageOffset: { x: imageOffsetX, y: imageOffsetY },
+      recordingCanvas: { width: recordingCanvasWidth, height: recordingCanvasHeight },
+      scales: { 
+        scaleX: (renderedImageWidth / recordingCanvasWidth).toFixed(4), 
+        scaleY: (renderedImageHeight / recordingCanvasHeight).toFixed(4) 
+      }
     });
     
     // Draw each annotation progressively

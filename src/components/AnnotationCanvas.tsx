@@ -1128,6 +1128,9 @@ const AnnotationCanvas = ({
       // Classify as dwell or tap
       const duration = Date.now() - (pointerStart?.time || 0);
       const gesture = duration > DWELL_TIME ? "dwell" : "tap";
+      
+      // Store coordinates in canvas space for transformation during playback
+      
       // Add annotation as point, let context generate timestamp
       addAnnotation({
         type: "point",
@@ -1139,6 +1142,9 @@ const AnnotationCanvas = ({
       });
     } else if (traceType === "freehand" && currentTrace.length > 0) {
       console.log("Creating freehand annotation with", currentTrace.length, "points");
+      
+      // Store coordinates in canvas space for transformation during playback
+      
       // For explicit freehand tool, always create freehand annotation even with single point
       if (selectedTool === "freehand") {
         addAnnotation({
@@ -1166,7 +1172,7 @@ const AnnotationCanvas = ({
     setCurrentTrace([]);
     setTraceType("none");
     setDwellRadius(5);
-  }, [pointerDown, traceType, currentTrace, pointerStart, selectedTool, addAnnotation, selectedColor]);
+  }, [pointerDown, traceType, currentTrace, pointerStart, selectedTool, addAnnotation, selectedColor, imageScaling, imageDimensions]);
 
   const handlePointerLeaveV2 = useCallback((e?: React.PointerEvent<HTMLCanvasElement>) => {
     if (e) e.preventDefault();
