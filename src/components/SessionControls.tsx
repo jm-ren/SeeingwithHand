@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
-import { PlayCircle, StopCircle, LineChart, RotateCcw, Pause, FastForward } from "lucide-react";
+import { PlayCircle, StopCircle, LineChart, RotateCcw, Pause, FastForward, Download } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -21,6 +21,7 @@ import Legend from "./Legend";
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { Mic, MicOff } from "lucide-react";
 import ColorPalette from "./ColorPalette";
+import { exportAndDownloadTraces } from "../lib/svgExporter";
 
 interface SessionControlsProps {
   onTransform?: () => void;
@@ -245,6 +246,59 @@ const SessionControls = ({
                 }}>
                   <p>{audioEnabled ? "audio enabled" : "audio disabled"}</p>
                 </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="transform-gpu transition-transform duration-150 hover:translate-y-[-2px] active:translate-y-[1px]">
+                  <button
+                    onClick={() => {
+                      if (annotations.length === 0) {
+                        console.warn('No annotations to export');
+                        return;
+                      }
+                      exportAndDownloadTraces(annotations, {
+                        strokeWidth: 2,
+                        includeTimestamps: true,
+                        backgroundColor: 'transparent'
+                      });
+                    }}
+                    disabled={disabled || annotations.length === 0}
+                    className="flex items-center gap-2 h-[40px] px-6 border transition-colors"
+                    style={{
+                      backgroundColor: annotations.length > 0 ? '#333333' : '#F5F5F5',
+                      color: annotations.length > 0 ? '#FFFFFF' : '#999999',
+                      border: '1px solid #666666',
+                      borderRadius: '0',
+                      fontFamily: 'Azeret Mono, monospace',
+                      fontWeight: 400,
+                      fontSize: '14px',
+                      letterSpacing: '0.5px',
+                      opacity: annotations.length === 0 ? 0.5 : 1
+                    }}
+                  >
+                    <div className="w-[20px] h-[20px] flex items-center justify-center">
+                      <Download className="h-[16px] w-[16px]" />
+                    </div>
+                    <span>
+                      export
+                    </span>
+                  </button>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent style={{ 
+                fontFamily: 'Azeret Mono, monospace', 
+                fontWeight: 400, 
+                letterSpacing: '0.5px',
+                backgroundColor: '#F5F5F5',
+                color: '#333333',
+                border: '1px solid #666666',
+                borderRadius: '0'
+              }}>
+                <p>{annotations.length > 0 ? "download traces as SVG" : "no traces to export"}</p>
+              </TooltipContent>
             </Tooltip>
           </TooltipProvider>
 

@@ -3,8 +3,9 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { Clock, DotSquare, PenLine, Square, Pencil, Group, ArrowDown, Activity } from "lucide-react";
+import { Clock, DotSquare, PenLine, Square, Pencil, Group, ArrowDown, Activity, Download } from "lucide-react";
 import { useAnnotations } from "../context/ApplicationContext";
+import { exportAndDownloadTraces } from "../lib/svgExporter";
 
 interface TraceItem {
   id: string;
@@ -334,6 +335,29 @@ const Traceboard = ({
             letterSpacing: '0.5px',
             color: '#333333'
           }}>timeline</h2>
+          <Button
+            onClick={() => {
+              if (annotations.length === 0) {
+                console.warn('No annotations to export');
+                return;
+              }
+              exportAndDownloadTraces(annotations, {
+                strokeWidth: 2,
+                includeTimestamps: true,
+                backgroundColor: 'transparent'
+              });
+            }}
+            disabled={annotations.length === 0}
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 hover:bg-gray-100"
+            style={{
+              opacity: annotations.length === 0 ? 0.3 : 0.7,
+              transition: 'opacity 0.2s ease'
+            }}
+          >
+            <Download className="h-3 w-3" style={{ color: '#666666' }} />
+          </Button>
         </div>
         <p className="text-xs" style={{ 
           fontFamily: 'Azeret Mono, monospace', 
