@@ -29,7 +29,7 @@ interface SessionControlsProps {
   disabled?: boolean;
   countdown?: number;
   showCountdown?: boolean;
-  onSessionEnd?: (summary: { sessionName: string; imageUrl: string; audioUrl?: string }) => void;
+  onSessionEnd?: (summary: { sessionName: string; imageUrl: string; audioUrl?: string; audioBlob?: Blob }) => void;
   sessionName?: string;
   imageUrl?: string;
   audioRecorder?: ReturnType<typeof useAudioRecorder>;
@@ -63,22 +63,65 @@ const SessionControls = ({
   const handleStartStop = () => {
     if (isSessionActive) {
       endSession();
-      if (audio.isRecording) audio.stop();
-      console.log('[SessionControls] Attempting to call onSessionEnd:', { sessionName, imageUrl, audioUrl: audio.audioUrl });
-      if (onSessionEnd && sessionName && imageUrl) {
-        onSessionEnd({
-          sessionName,
-          imageUrl,
-          audioUrl: audio.audioUrl || undefined,
+      
+      console.log('[SessionControls] Session ending. Audio state:', {
+        isRecording: audio.isRecording,
+        audioUrl: audio.audioUrl,
+        audioBlob: audio.audioBlob,
+        audioEnabled
+      });
+      
+      if (audio.isRecording) {
+        console.log('[SessionControls] Stopping audio recording...');
+        
+        // Use promise-based stop method
+        audio.stop().then((audioResult) => {
+          console.log('[SessionControls] Audio processing complete, received:', audioResult);
+          
+          if (onSessionEnd && sessionName && imageUrl) {
+            const summary = {
+              sessionName,
+              imageUrl,
+              audioUrl: audioResult.audioUrl || undefined,
+              audioBlob: audioResult.audioBlob || undefined,
+            };
+            console.log('[SessionControls] Calling onSessionEnd with summary:', summary);
+            onSessionEnd(summary);
+          } else {
+            console.warn('[SessionControls] onSessionEnd not called. Missing:', { onSessionEnd, sessionName, imageUrl });
+          }
+        }).catch((error) => {
+          console.error('[SessionControls] Audio stop failed:', error);
+          // Call onSessionEnd anyway without audio
+          if (onSessionEnd && sessionName && imageUrl) {
+            onSessionEnd({
+              sessionName,
+              imageUrl,
+              audioUrl: undefined,
+            });
+          }
         });
       } else {
-        console.warn('[SessionControls] onSessionEnd not called. Missing:', { onSessionEnd, sessionName, imageUrl });
+        // No audio recording, call onSessionEnd immediately
+        console.log('[SessionControls] No audio recording active, calling onSessionEnd immediately');
+        if (onSessionEnd && sessionName && imageUrl) {
+          const summary = {
+            sessionName,
+            imageUrl,
+            audioUrl: undefined,
+          };
+          console.log('[SessionControls] Calling onSessionEnd with summary (no audio):', summary);
+          onSessionEnd(summary);
+        }
       }
     } else {
       startSession();
       // Automatically start audio recording if enabled
       if (audioEnabled && !audio.isRecording) {
+        console.log('[SessionControls] Starting audio recording...');
         audio.start();
+      } else {
+        console.log('[SessionControls] Audio recording not started:', { audioEnabled, isRecording: audio.isRecording });
       }
     }
   };

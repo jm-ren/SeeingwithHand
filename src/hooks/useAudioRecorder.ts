@@ -100,20 +100,49 @@ export function useAudioRecorder() {
     console.log('[AudioRecorder] Stopping audio recording...');
     console.log('[AudioRecorder] MediaRecorder state:', mediaRecorderRef.current?.state);
     
-    if (mediaRecorderRef.current && (mediaRecorderRef.current.state === 'recording' || mediaRecorderRef.current.state === 'paused')) {
-      mediaRecorderRef.current.stop();
-      console.log('[AudioRecorder] MediaRecorder.stop() called');
-      setIsRecording(false);
-      setIsPaused(false);
-    }
-    
-    // Also stop tracks immediately in case onstop doesn't fire
-    if (streamRef.current) {
-      console.log('[AudioRecorder] Stopping stream tracks...');
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-  }, []);
+    return new Promise<{audioUrl: string | null, audioBlob: Blob | null}>((resolve) => {
+      if (mediaRecorderRef.current && (mediaRecorderRef.current.state === 'recording' || mediaRecorderRef.current.state === 'paused')) {
+        // Set up one-time listener for when processing is complete
+        mediaRecorderRef.current.onstop = () => {
+          console.log('[AudioRecorder] Recording stopped, total chunks:', chunksRef.current.length);
+          const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+          const url = URL.createObjectURL(blob);
+          
+          setAudioBlob(blob);
+          setAudioUrl(url);
+          console.log('[AudioRecorder] Audio blob created:', blob.size, 'bytes');
+          
+          // Resolve with the fresh data
+          console.log('[AudioRecorder] Promise resolving with fresh data:', {
+            audioUrl: url,
+            audioBlob: blob
+          });
+          resolve({ audioUrl: url, audioBlob: blob });
+          
+          // Stop all tracks to release microphone access
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+          }
+        };
+        
+        mediaRecorderRef.current.stop();
+        console.log('[AudioRecorder] MediaRecorder.stop() called');
+        setIsRecording(false);
+        setIsPaused(false);
+      } else {
+        // No recording to stop
+        resolve({ audioUrl, audioBlob });
+      }
+      
+      // Also stop tracks immediately in case onstop doesn't fire
+      if (streamRef.current) {
+        console.log('[AudioRecorder] Stopping stream tracks...');
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+    });
+  }, [audioUrl, audioBlob]);
 
   return {
     isRecording,

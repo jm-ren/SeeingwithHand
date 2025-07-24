@@ -7,6 +7,10 @@ import { useApplication } from "../context/ApplicationContext";
 import { Annotation, Tool } from "../types/annotations";
 import { processTracesForDisplay } from "../lib/utils";
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
+import { Mic, MicOff } from "lucide-react";
+import ColorPalette from "./ColorPalette";
+import { exportAndDownloadTraces } from "../lib/svgExporter";
+import AudioTest from "./AudioTest";
 import { appSettings } from "../config/appConfig";
 
 interface Point {
@@ -36,7 +40,7 @@ const imageMap: Record<string, string> = {
 interface HomeProps {
   imageId?: string;
   sessionId?: string;
-  onSessionEnd?: (summary: { sessionName: string; imageUrl: string; audioUrl?: string }) => void;
+  onSessionEnd?: (summary: { sessionName: string; imageUrl: string; audioUrl?: string; audioBlob?: Blob }) => void;
 }
 
 const sessionNameCounter: Record<string, number> = {};
@@ -411,6 +415,9 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
         />
       </div>
       <Traceboard />
+      
+      {/* Temporary Audio Test Component */}
+      <AudioTest />
     </div>
   );
 };

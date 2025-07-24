@@ -13,6 +13,7 @@ interface AmbienceSurveyProps {
   sessionName: string;
   imageUrl: string;
   audioUrl?: string;
+  audioBlob?: Blob;
   onSubmit: (data: any) => void;
   onClose: () => void;
   onViewReplay?: () => void;
@@ -24,10 +25,44 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
   sessionName, 
   imageUrl, 
   audioUrl, 
+  audioBlob,
   onSubmit, 
   onClose,
   onViewReplay
 }) => {
+  // Debug audio URL on component mount
+  useEffect(() => {
+    console.log('🎵 [AmbienceSurvey] Component mounted with:', {
+      audioUrl,
+      audioBlob,
+      hasAudioUrl: !!audioUrl,
+      hasAudioBlob: !!audioBlob,
+      audioUrlType: typeof audioUrl,
+      sessionName,
+      annotationsCount: annotations?.length || 0
+    });
+  }, [audioUrl, audioBlob, sessionName, annotations]);
+
+  // Create local audio URL from blob if needed
+  const [localAudioUrl, setLocalAudioUrl] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (audioBlob && !audioUrl) {
+      const url = URL.createObjectURL(audioBlob);
+      setLocalAudioUrl(url);
+      console.log('🎵 [AmbienceSurvey] Created local audio URL from blob:', url);
+      
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    } else if (audioUrl) {
+      setLocalAudioUrl(audioUrl);
+    }
+  }, [audioUrl, audioBlob]);
+
+  // Use the effective audio URL (either provided URL or created from blob)
+  const effectiveAudioUrl = localAudioUrl;
+
   // Form state
   const [formData, setFormData] = useState({
     nickname: '',
@@ -46,6 +81,11 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
   // Animation state
   const [animationProgress, setAnimationProgress] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Audio sync state
+  const [audioLoaded, setAudioLoaded] = useState(false);
+  const [isSeekingAudio, setIsSeekingAudio] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
 
   // Debug logging useEffect
   useEffect(() => {
@@ -75,28 +115,88 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
     }
   }, [annotations]);
   
-  // Audio sync effect
+  // Audio setup and loading
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !effectiveAudioUrl) return;
+
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+      setAudioLoaded(true);
+      console.log('[AmbienceSurvey] Audio loaded, duration:', audio.duration);
+    };
+
+    const handleTimeUpdate = () => {
+      if (!isSeekingAudio) {
+        setCurrentTime(audio.currentTime);
+        // Sync animation progress with audio progress
+        const progressPercent = (audio.currentTime / audio.duration) * 100;
+        setAnimationProgress(progressPercent);
+      }
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setAnimationProgress(0);
+    };
+
+    const handleCanPlay = () => {
+      console.log('[AmbienceSurvey] Audio can play');
+    };
+
+    const handleError = (e: any) => {
+      console.error('[AmbienceSurvey] Audio error:', e);
+    };
+
+    // Set up audio element
+    audio.src = effectiveAudioUrl;
+    audio.preload = 'metadata';
+    
+    // Add event listeners
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('canplay', handleCanPlay);
+    audio.addEventListener('error', handleError);
+
+    return () => {
+      // Cleanup event listeners
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('canplay', handleCanPlay);
+      audio.removeEventListener('error', handleError);
+    };
+  }, [effectiveAudioUrl, isSeekingAudio]);
 
   // Additional context state
   const [contextItems, setContextItems] = useState<AdditionalContextItem[]>([]);
 
-  // Auto-start animation on mount
+  // Auto-start animation on mount - but only if no audio or audio is ready
   useEffect(() => {
-    setIsPlaying(true);
-    setAnimationProgress(0);
-  }, []);
+    if (!effectiveAudioUrl || audioLoaded) {
+      // If no audio URL, start animation immediately
+      // If audio URL exists, wait for it to load
+      if (!effectiveAudioUrl) {
+        setIsPlaying(true);
+        setAnimationProgress(0);
+      }
+    }
+  }, [effectiveAudioUrl, audioLoaded]);
 
-  // Animation loop
+  // Animation loop - now synchronized with audio
   useEffect(() => {
-    if (isPlaying) {
+    if (isPlaying && !effectiveAudioUrl) {
+      // Fallback animation for when there's no audio
       intervalRef.current = setInterval(() => {
-                 setAnimationProgress(prev => {
-           const increment = 1; // 1% per 100ms  
-                      const newProgress = Math.min(prev + increment, 100);
-           
-                      if (newProgress >= 100) {
-             setIsPlaying(false);
-             return 100;
+        setAnimationProgress(prev => {
+          const increment = 1; // 1% per 100ms  
+          const newProgress = Math.min(prev + increment, 100);
+          
+          if (newProgress >= 100) {
+            setIsPlaying(false);
+            return 100;
           }
           return newProgress;
         });
@@ -112,7 +212,7 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
         clearInterval(intervalRef.current);
       }
     };
-  }, [isPlaying]);
+  }, [isPlaying, effectiveAudioUrl]);
 
   // Handle form input changes
   const handleInputChange = (field: string, value: string) => {
@@ -130,16 +230,74 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
 
   // Handle animation controls
   const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
+    const audio = audioRef.current;
+    
+    if (!isPlaying) {
+      // Starting playback
+      setIsPlaying(true);
+      
+      if (audio && effectiveAudioUrl && audioLoaded) {
+        // Play audio
+        audio.play().catch(error => {
+          console.error('[AmbienceSurvey] Audio play failed:', error);
+        });
+      }
+    } else {
+      // Pausing playback
+      setIsPlaying(false);
+      
+      if (audio && effectiveAudioUrl) {
+        // Pause audio
+        audio.pause();
+      }
+    }
   };
 
   const handleRestart = () => {
+    const audio = audioRef.current;
+    
     setAnimationProgress(0);
-    setIsPlaying(true);
+    setCurrentTime(0);
+    setIsPlaying(false);
+    
+    if (audio && effectiveAudioUrl) {
+      audio.currentTime = 0;
+      audio.pause();
+    }
+  };
+
+  const handleProgressSeek = (progressPercent: number) => {
+    const audio = audioRef.current;
+    
+    setAnimationProgress(progressPercent);
+    
+    if (audio && effectiveAudioUrl && audioLoaded) {
+      setIsSeekingAudio(true);
+      const newTime = (progressPercent / 100) * duration;
+      audio.currentTime = newTime;
+      setCurrentTime(newTime);
+      
+      // Resume sync after a short delay
+      setTimeout(() => {
+        setIsSeekingAudio(false);
+      }, 100);
+    }
   };
 
   const handleSpeedToggle = () => {
-    // setPlaybackSpeed(prev => prev === 1 ? 2 : 1); // This state was removed
+    // For audio playback, we can implement playback rate control
+    const audio = audioRef.current;
+    if (audio && effectiveAudioUrl) {
+      const currentRate = audio.playbackRate;
+      const newRate = currentRate >= 2 ? 1 : currentRate + 0.5;
+      audio.playbackRate = newRate;
+      setPlaybackRate(newRate);
+      console.log('[AmbienceSurvey] Audio playback rate:', newRate);
+    } else {
+      // Fallback for when there's no audio - just cycle through visual rates
+      const newRate = playbackRate >= 2 ? 1 : playbackRate + 0.5;
+      setPlaybackRate(newRate);
+    }
   };
 
   // Progressive annotation rendering
@@ -215,7 +373,7 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
     const expectedRecordingImageWidth = recordingCanvasWidth; // Assuming width-constrained
     const expectedRecordingImageHeight = recordingCanvasWidth / imageNaturalAspectRatio; // Should be ≈ 1094.8
     
-    console.log('🔍 Recording analysis:', {
+    console.log('�� Recording analysis:', {
       imageNaturalSize: { width: imageElement.naturalWidth, height: imageElement.naturalHeight },
       imageAspectRatio: imageNaturalAspectRatio.toFixed(3),
       recordingCanvas: { width: recordingCanvasWidth, height: recordingCanvasHeight },
@@ -623,30 +781,72 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
                    }}
                  >
                    <FastForward size={14} />
-                   {/* {playbackSpeed}x */}
+                   {playbackRate}x
                  </button>
                  <div style={{ fontSize: '11px', marginLeft: '8px', color: '#666' }}>
-                                       {Math.round(animationProgress)}%
+                   {Math.round(animationProgress)}%
                  </div>
                </div>
 
-               {/* Eye Visualization - temporarily hidden */}
-               {false && (
-                 <div style={{ 
-                   backgroundColor: '#F8F8F8', 
-                   border: '1px solid #CCCCCC',
-                   padding: '16px', 
-                   display: 'flex', 
-                   justifyContent: 'center',
-                   marginTop: '12px'
-                 }}>
-                   <EyeVisualization
-                     annotations={annotations}
-                     isPlaying={isPlaying}
-                                           progress={animationProgress}
-                     playbackSpeed={1} // This state was removed
-                   />
+               {/* Progress Bar for Audio/Animation Sync */}
+               {effectiveAudioUrl && (
+                 <div style={{ marginTop: '16px' }}>
+                   <div style={{ 
+                     display: 'flex', 
+                     justifyContent: 'space-between', 
+                     fontSize: '10px', 
+                     color: '#666',
+                     marginBottom: '4px'
+                   }}>
+                     <span>{Math.floor(currentTime / 60)}:{(Math.floor(currentTime) % 60).toString().padStart(2, '0')}</span>
+                     <span>{Math.floor(duration / 60)}:{(Math.floor(duration) % 60).toString().padStart(2, '0')}</span>
+                   </div>
+                   <div 
+                     style={{ 
+                       width: '100%', 
+                       height: '6px', 
+                       backgroundColor: '#CCCCCC', 
+                       border: '1px solid #999',
+                       cursor: 'pointer',
+                       position: 'relative'
+                     }}
+                     onClick={(e) => {
+                       const rect = e.currentTarget.getBoundingClientRect();
+                       const clickX = e.clientX - rect.left;
+                       const progressPercent = (clickX / rect.width) * 100;
+                       handleProgressSeek(Math.max(0, Math.min(100, progressPercent)));
+                     }}
+                   >
+                     <div
+                       style={{ 
+                         backgroundColor: '#333333', 
+                         height: '100%', 
+                         transition: isSeekingAudio ? 'none' : 'width 0.1s ease',
+                         width: `${animationProgress}%`
+                       }}
+                     />
+                   </div>
                  </div>
+               )}
+
+               {/* Debug Audio Status */}
+               <div style={{ marginTop: '12px', fontSize: '10px', color: '#999', border: '1px solid #ddd', padding: '8px', backgroundColor: '#f5f5f5' }}>
+                 <div><strong>Audio Debug:</strong></div>
+                 <div>Audio URL: {effectiveAudioUrl ? '✅ Available' : '❌ Missing'}</div>
+                 <div>Audio Loaded: {audioLoaded ? '✅ Yes' : '❌ No'}</div>
+                 <div>Duration: {duration}s</div>
+                 <div>Current Time: {currentTime.toFixed(1)}s</div>
+                 <div>Is Playing: {isPlaying ? '▶️' : '⏸️'}</div>
+                 {effectiveAudioUrl && <div>URL: {effectiveAudioUrl.substring(0, 50)}...</div>}
+               </div>
+
+               {/* Hidden Audio Element */}
+               {effectiveAudioUrl && (
+                 <audio
+                   ref={audioRef}
+                   style={{ display: 'none' }}
+                   preload="metadata"
+                 />
                )}
              </div>
           </div>
