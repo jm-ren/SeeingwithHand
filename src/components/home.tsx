@@ -10,7 +10,6 @@ import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { Mic, MicOff } from "lucide-react";
 import ColorPalette from "./ColorPalette";
 import { exportAndDownloadTraces } from "../lib/svgExporter";
-import AudioTest from "./AudioTest";
 import { appSettings } from "../config/appConfig";
 
 interface Point {
@@ -415,9 +414,6 @@ const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
         />
       </div>
       <Traceboard />
-      
-      {/* Temporary Audio Test Component */}
-      <AudioTest />
     </div>
   );
 };

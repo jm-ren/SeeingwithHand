@@ -28,22 +28,10 @@ const SessionPageContent: React.FC<{ imageId?: string; sessionId?: string }> = (
 
   // Handler to trigger survey after session ends
   const handleSessionEnd = (summary: { sessionName: string; imageUrl: string; audioUrl?: string; audioBlob?: Blob }) => {
-    console.log('[SessionPage] handleSessionEnd called with summary:', {
-      sessionName: summary.sessionName,
-      imageUrl: summary.imageUrl,
-      audioUrl: summary.audioUrl,
-      audioBlob: summary.audioBlob,
-      audioBlobSize: summary.audioBlob?.size || 'No blob',
-      hasAudioUrl: !!summary.audioUrl,
-      hasAudioBlob: !!summary.audioBlob
-    });
-    
     // End the session to stop canvas recording
     endSession();
     setSessionSummary(summary);
     setShowSurvey(true);
-    
-    console.log('[SessionPage] Session summary stored and survey shown');
   };
 
   const handleSurveySubmit = async (data: any) => {

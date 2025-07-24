@@ -37,7 +37,6 @@ export function useAudioRecorder() {
       mediaRecorderRef.current = mediaRecorder;
       
       mediaRecorder.ondataavailable = (e) => {
-        console.log('[AudioRecorder] Data available:', e.data.size, 'bytes');
         if (e.data.size > 0) {
           chunksRef.current.push(e.data);
         }
@@ -104,19 +103,13 @@ export function useAudioRecorder() {
       if (mediaRecorderRef.current && (mediaRecorderRef.current.state === 'recording' || mediaRecorderRef.current.state === 'paused')) {
         // Set up one-time listener for when processing is complete
         mediaRecorderRef.current.onstop = () => {
-          console.log('[AudioRecorder] Recording stopped, total chunks:', chunksRef.current.length);
           const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
           const url = URL.createObjectURL(blob);
           
           setAudioBlob(blob);
           setAudioUrl(url);
-          console.log('[AudioRecorder] Audio blob created:', blob.size, 'bytes');
           
           // Resolve with the fresh data
-          console.log('[AudioRecorder] Promise resolving with fresh data:', {
-            audioUrl: url,
-            audioBlob: blob
-          });
           resolve({ audioUrl: url, audioBlob: blob });
           
           // Stop all tracks to release microphone access

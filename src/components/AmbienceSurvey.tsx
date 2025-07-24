@@ -32,15 +32,12 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
 }) => {
   // Debug audio URL on component mount
   useEffect(() => {
-    console.log('🎵 [AmbienceSurvey] Component mounted with:', {
-      audioUrl,
-      audioBlob,
-      hasAudioUrl: !!audioUrl,
-      hasAudioBlob: !!audioBlob,
-      audioUrlType: typeof audioUrl,
-      sessionName,
-      annotationsCount: annotations?.length || 0
-    });
+    if (audioUrl || audioBlob) {
+      console.log('[AmbienceSurvey] Audio source available:', {
+        hasAudioUrl: !!audioUrl,
+        hasAudioBlob: !!audioBlob
+      });
+    }
   }, [audioUrl, audioBlob, sessionName, annotations]);
 
   // Create local audio URL from blob if needed
@@ -50,7 +47,6 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
     if (audioBlob && !audioUrl) {
       const url = URL.createObjectURL(audioBlob);
       setLocalAudioUrl(url);
-      console.log('🎵 [AmbienceSurvey] Created local audio URL from blob:', url);
       
       return () => {
         URL.revokeObjectURL(url);
@@ -123,7 +119,6 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
     const handleLoadedMetadata = () => {
       setDuration(audio.duration);
       setAudioLoaded(true);
-      console.log('[AmbienceSurvey] Audio loaded, duration:', audio.duration);
     };
 
     const handleTimeUpdate = () => {
@@ -142,7 +137,7 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
     };
 
     const handleCanPlay = () => {
-      console.log('[AmbienceSurvey] Audio can play');
+      // Audio is ready to play
     };
 
     const handleError = (e: any) => {
@@ -173,17 +168,19 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
   // Additional context state
   const [contextItems, setContextItems] = useState<AdditionalContextItem[]>([]);
 
-  // Auto-start animation on mount - but only if no audio or audio is ready
+  // Auto-start animation on mount - but only if no audio is available
   useEffect(() => {
-    if (!effectiveAudioUrl || audioLoaded) {
-      // If no audio URL, start animation immediately
-      // If audio URL exists, wait for it to load
-      if (!effectiveAudioUrl) {
-        setIsPlaying(true);
-        setAnimationProgress(0);
-      }
+    if (!effectiveAudioUrl) {
+      // Only auto-start animation if there's no audio
+      // When audio is available, user should manually start playback
+      setIsPlaying(true);
+      setAnimationProgress(0);
+    } else {
+      // When audio is available, start in paused state so user can choose to play
+      setIsPlaying(false);
+      setAnimationProgress(0);
     }
-  }, [effectiveAudioUrl, audioLoaded]);
+  }, [effectiveAudioUrl]);
 
   // Animation loop - now synchronized with audio
   useEffect(() => {
@@ -292,7 +289,6 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
       const newRate = currentRate >= 2 ? 1 : currentRate + 0.5;
       audio.playbackRate = newRate;
       setPlaybackRate(newRate);
-      console.log('[AmbienceSurvey] Audio playback rate:', newRate);
     } else {
       // Fallback for when there's no audio - just cycle through visual rates
       const newRate = playbackRate >= 2 ? 1 : playbackRate + 0.5;
@@ -828,17 +824,6 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
                    </div>
                  </div>
                )}
-
-               {/* Debug Audio Status */}
-               <div style={{ marginTop: '12px', fontSize: '10px', color: '#999', border: '1px solid #ddd', padding: '8px', backgroundColor: '#f5f5f5' }}>
-                 <div><strong>Audio Debug:</strong></div>
-                 <div>Audio URL: {effectiveAudioUrl ? '✅ Available' : '❌ Missing'}</div>
-                 <div>Audio Loaded: {audioLoaded ? '✅ Yes' : '❌ No'}</div>
-                 <div>Duration: {duration}s</div>
-                 <div>Current Time: {currentTime.toFixed(1)}s</div>
-                 <div>Is Playing: {isPlaying ? '▶️' : '⏸️'}</div>
-                 {effectiveAudioUrl && <div>URL: {effectiveAudioUrl.substring(0, 50)}...</div>}
-               </div>
 
                {/* Hidden Audio Element */}
                {effectiveAudioUrl && (

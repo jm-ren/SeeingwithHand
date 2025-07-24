@@ -66,8 +66,6 @@ const SessionControls = ({
       
       console.log('[SessionControls] Session ending. Audio state:', {
         isRecording: audio.isRecording,
-        audioUrl: audio.audioUrl,
-        audioBlob: audio.audioBlob,
         audioEnabled
       });
       
@@ -76,8 +74,6 @@ const SessionControls = ({
         
         // Use promise-based stop method
         audio.stop().then((audioResult) => {
-          console.log('[SessionControls] Audio processing complete, received:', audioResult);
-          
           if (onSessionEnd && sessionName && imageUrl) {
             const summary = {
               sessionName,
@@ -85,7 +81,6 @@ const SessionControls = ({
               audioUrl: audioResult.audioUrl || undefined,
               audioBlob: audioResult.audioBlob || undefined,
             };
-            console.log('[SessionControls] Calling onSessionEnd with summary:', summary);
             onSessionEnd(summary);
           } else {
             console.warn('[SessionControls] onSessionEnd not called. Missing:', { onSessionEnd, sessionName, imageUrl });
