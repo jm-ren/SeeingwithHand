@@ -168,36 +168,73 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
   // Additional context state
   const [contextItems, setContextItems] = useState<AdditionalContextItem[]>([]);
 
-  // Auto-start animation on mount - but only if no audio is available
+  // Auto-start animation on mount - but only if no valid audio is available
   useEffect(() => {
-    if (!effectiveAudioUrl) {
-      // Only auto-start animation if there's no audio
-      // When audio is available, user should manually start playback
+    // Handle invalid audio duration (Infinity, NaN, 0) - fall back to animation progress
+    const isValidAudioDuration = effectiveAudioUrl && duration > 0 && duration !== Infinity && !isNaN(duration);
+    
+    if (!effectiveAudioUrl || !isValidAudioDuration) {
+      // Only auto-start animation if there's no valid audio
+      console.log('[AmbienceSurvey] Auto-starting animation - no valid audio');
       setIsPlaying(true);
       setAnimationProgress(0);
     } else {
-      // When audio is available, start in paused state so user can choose to play
+      // When valid audio is available, start in paused state so user can choose to play
+      console.log('[AmbienceSurvey] Valid audio detected - starting paused');
       setIsPlaying(false);
       setAnimationProgress(0);
     }
-  }, [effectiveAudioUrl]);
+  }, [effectiveAudioUrl, duration]);
 
   // Animation loop - now synchronized with audio
   useEffect(() => {
-    if (isPlaying && !effectiveAudioUrl) {
-      // Fallback animation for when there's no audio
-      intervalRef.current = setInterval(() => {
-        setAnimationProgress(prev => {
-          const increment = 1; // 1% per 100ms  
-          const newProgress = Math.min(prev + increment, 100);
-          
-          if (newProgress >= 100) {
-            setIsPlaying(false);
-            return 100;
+    if (isPlaying) {
+      // Handle invalid audio duration (Infinity, NaN, 0) - fall back to animation progress
+      const isValidAudioDuration = effectiveAudioUrl && duration > 0 && duration !== Infinity && !isNaN(duration);
+      
+      if (!effectiveAudioUrl || !isValidAudioDuration) {
+        // No audio OR invalid audio duration - use fallback animation timing
+        console.log('[AmbienceSurvey] Using fallback animation - no valid audio');
+        intervalRef.current = setInterval(() => {
+          setAnimationProgress(prev => {
+            const increment = 0.8; // 0.8% per 100ms = ~8% per second  
+            const newProgress = Math.min(prev + increment, 100);
+            
+            if (newProgress >= 100) {
+              setIsPlaying(false);
+              return 100;
+            }
+            return newProgress;
+          });
+        }, 100);
+      } else {
+        // Valid audio - set up fallback animation in case audio doesn't work
+        // This ensures traces can still animate even if audio fails
+        const fallbackTimer = setTimeout(() => {
+          if (currentTime === 0 && isPlaying) {
+            console.log('[AmbienceSurvey] Audio fallback: starting manual animation');
+            intervalRef.current = setInterval(() => {
+              setAnimationProgress(prev => {
+                const increment = 0.5; // Slower than no-audio case
+                const newProgress = Math.min(prev + increment, 100);
+                
+                if (newProgress >= 100) {
+                  setIsPlaying(false);
+                  return 100;
+                }
+                return newProgress;
+              });
+            }, 100);
           }
-          return newProgress;
-        });
-      }, 100);
+        }, 1000); // Wait 1 second for audio to start
+        
+        return () => {
+          clearTimeout(fallbackTimer);
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+          }
+        };
+      }
     } else {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -209,7 +246,7 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
         clearInterval(intervalRef.current);
       }
     };
-  }, [isPlaying, effectiveAudioUrl]);
+  }, [isPlaying, effectiveAudioUrl, duration, currentTime]);
 
   // Handle form input changes
   const handleInputChange = (field: string, value: string) => {
@@ -229,22 +266,45 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
   const handlePlayPause = () => {
     const audio = audioRef.current;
     
+    console.log('🎵 handlePlayPause called:', {
+      isPlaying,
+      hasAudio: !!audio,
+      hasEffectiveAudioUrl: !!effectiveAudioUrl,
+      audioLoaded,
+      audioReadyState: audio?.readyState,
+      audioDuration: audio?.duration
+    });
+    
     if (!isPlaying) {
       // Starting playback
       setIsPlaying(true);
       
       if (audio && effectiveAudioUrl && audioLoaded) {
-        // Play audio
-        audio.play().catch(error => {
-          console.error('[AmbienceSurvey] Audio play failed:', error);
-        });
+        // Ensure audio is ready before playing
+        if (audio.readyState >= 2) { // HAVE_CURRENT_DATA or better
+          audio.play().catch(error => {
+            console.error('[AmbienceSurvey] Audio play failed:', error);
+            // If audio fails, still allow trace animation
+          });
+        } else {
+          console.log('[AmbienceSurvey] Audio not ready, waiting for canplay event');
+          // Set up one-time event listener for when audio is ready
+          const handleCanPlay = () => {
+            audio.play().catch(error => {
+              console.error('[AmbienceSurvey] Delayed audio play failed:', error);
+            });
+            audio.removeEventListener('canplay', handleCanPlay);
+          };
+          audio.addEventListener('canplay', handleCanPlay);
+        }
+      } else {
+        console.log('[AmbienceSurvey] No audio to play, starting trace animation only');
       }
     } else {
       // Pausing playback
       setIsPlaying(false);
       
       if (audio && effectiveAudioUrl) {
-        // Pause audio
         audio.pause();
       }
     }
@@ -451,9 +511,33 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
       console.log(`Should appear at center of survey image: (${(imageOffsetX + renderedImageWidth/2).toFixed(1)}, ${(imageOffsetY + renderedImageHeight/2).toFixed(1)})`);
     }
 
-    // Simple approach: show annotations based on progress
+    // SIMPLIFIED: Show annotations based on progress - GUARANTEES traces will appear
     const totalAnnotations = annotations.length;
-    const annotationsToShow = Math.floor((animationProgress / 100) * totalAnnotations);
+    
+    // Handle invalid audio duration (Infinity, NaN, 0) - fall back to animation progress
+    const isValidAudioDuration = effectiveAudioUrl && duration > 0 && duration !== Infinity && !isNaN(duration);
+    const progressToUse = isValidAudioDuration ? (currentTime / duration) * 100 : animationProgress;
+    const annotationsToShow = Math.floor((progressToUse / 100) * totalAnnotations);
+    
+    // Show all annotations up to the current progress point
+    const visibleAnnotations = annotations.slice(0, Math.max(1, annotationsToShow + 1));
+
+    // DEBUG: Log the simplified logic (only when values change significantly)
+    if (Math.abs(progressToUse - (window as any).lastProgressLogged || 0) > 5) {
+      console.log('🎯 SIMPLIFIED Trace debug:', {
+        totalAnnotations,
+        isValidAudioDuration,
+        progressToUse: Math.round(progressToUse * 10) / 10, // Round to 1 decimal
+        annotationsToShow,
+        visibleAnnotations: visibleAnnotations.length,
+        currentTime: Math.round(currentTime * 10) / 10,
+        duration,
+        animationProgress: Math.round(animationProgress * 10) / 10,
+        hasAudio: !!effectiveAudioUrl,
+        isPlaying
+      });
+      (window as any).lastProgressLogged = progressToUse;
+    }
 
     // Create test markers for coordinate validation
     const debugElements = [];
@@ -489,7 +573,7 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
 
     return [
       ...debugElements,
-      ...annotations.slice(0, annotationsToShow + 1).map((annotation, index) => {
+      ...visibleAnnotations.map((annotation, index) => {
         if (annotation.type === 'freehand' && annotation.points && annotation.points.length > 1) {
           const pathData = annotation.points.map((point, i) => {
             const convertedPoint = convertPoint(point);
