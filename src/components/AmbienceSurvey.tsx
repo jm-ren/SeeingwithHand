@@ -14,6 +14,7 @@ interface AmbienceSurveyProps {
   imageUrl: string;
   audioUrl?: string;
   audioBlob?: Blob;
+  sessionStartTime?: number;
   onSubmit: (data: any) => void;
   onClose: () => void;
   onViewReplay?: () => void;
@@ -26,10 +27,16 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
   imageUrl, 
   audioUrl, 
   audioBlob,
+  sessionStartTime,
   onSubmit, 
   onClose,
   onViewReplay
 }) => {
+  // Sort annotations once by timestamp so replay always reflects drawing order
+  const sortedAnnotations = React.useMemo(
+    () => [...annotations].sort((a, b) => a.timestamp - b.timestamp),
+    [annotations]
+  );
   // Debug audio URL on component mount
   useEffect(() => {
     if (audioUrl || audioBlob) {
@@ -83,33 +90,6 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
   const [isSeekingAudio, setIsSeekingAudio] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
 
-  // Debug logging useEffect
-  useEffect(() => {
-    if (annotations && annotations.length > 0) {
-      console.log('=== AMBIENCE SURVEY COORDINATE DEBUG ===');
-      console.log('Annotations count:', annotations.length);
-      console.log('First annotation:', annotations[0]);
-      console.log('First annotation points sample:', annotations[0].points?.slice(0, 5));
-      if (annotations[0].points && annotations[0].points.length > 0) {
-        console.log('First point coordinates:', annotations[0].points[0]);
-        console.log('Last point coordinates:', annotations[0].points[annotations[0].points.length - 1]);
-        
-        // Analyze coordinate ranges to understand recording space
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        annotations.forEach(annotation => {
-          annotation.points.forEach(point => {
-            minX = Math.min(minX, point.x);
-            maxX = Math.max(maxX, point.x);
-            minY = Math.min(minY, point.y);
-            maxY = Math.max(maxY, point.y);
-          });
-        });
-        console.log('Coordinate ranges:', { minX, maxX, minY, maxY });
-        console.log('Estimated recording canvas size:', { width: maxX - minX + 100, height: maxY - minY + 100 });
-      }
-      console.log('==========================================');
-    }
-  }, [annotations]);
   
   // Audio setup and loading
   useEffect(() => {
@@ -358,43 +338,17 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
 
   // Progressive annotation rendering
   const renderProgressiveAnnotations = () => {
-    console.log('🚀 renderProgressiveAnnotations called with:', {
-      annotationsCount: annotations?.length || 0,
-      animationProgress: animationProgress
-    });
-    
-    if (!annotations || annotations.length === 0) {
-      console.log('❌ No annotations available');
+    if (!sortedAnnotations || sortedAnnotations.length === 0) {
       return null;
     }
 
-    // Get the image element to determine its natural dimensions and current size
     const imageElement = document.querySelector('img[alt="Session"]') as HTMLImageElement;
-    console.log('🔍 Image element check:', {
-      found: !!imageElement,
-      complete: imageElement?.complete,
-      src: imageElement?.src,
-      naturalWidth: imageElement?.naturalWidth,
-      naturalHeight: imageElement?.naturalHeight
-    });
-    
     if (!imageElement || !imageElement.complete) {
-      console.log('❌ Image element not ready - returning null');
       return null;
     }
 
-    // Get the actual rendered image dimensions and position
-    const imageRect = imageElement.getBoundingClientRect();
     const containerRect = imageElement.parentElement?.getBoundingClientRect();
-    
-    console.log('🔍 Container check:', {
-      containerFound: !!containerRect,
-      imageRect: imageRect,
-      containerRect: containerRect
-    });
-    
     if (!containerRect) {
-      console.log('❌ Container element not found - returning null');
       return null;
     }
 
@@ -421,159 +375,41 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
     // Recording dimensions and position (from debug output)
     const recordingCanvasWidth = 1652;
     const recordingCanvasHeight = 1095.13;
-    const recordingImageOffsetX = 0; // TODO: Verify this - might need adjustment for rightward shift
+    const recordingImageOffsetX = 0;
     const recordingImageOffsetY = 128.43; // The image was offset during recording
     
-    // Calculate what the recording image dimensions should have been
-    const imageNaturalAspectRatio = imageElement.naturalWidth / imageElement.naturalHeight; // 1154/765 ≈ 1.509
-    const expectedRecordingImageWidth = recordingCanvasWidth; // Assuming width-constrained
-    const expectedRecordingImageHeight = recordingCanvasWidth / imageNaturalAspectRatio; // Should be ≈ 1094.8
-    
-    console.log('�� Recording analysis:', {
-      imageNaturalSize: { width: imageElement.naturalWidth, height: imageElement.naturalHeight },
-      imageAspectRatio: imageNaturalAspectRatio.toFixed(3),
-      recordingCanvas: { width: recordingCanvasWidth, height: recordingCanvasHeight },
-      expectedRecordingImageSize: { width: expectedRecordingImageWidth, height: expectedRecordingImageHeight.toFixed(2) },
-      recordingImageOffset: { x: recordingImageOffsetX, y: recordingImageOffsetY },
-      potentialHorizontalCentering: (recordingCanvasWidth - expectedRecordingImageWidth) / 2
-    });
-    
-    // Create coordinate transformer that converts from recording space to actual image space
+    // Convert a point from recording-space canvas coordinates to current SVG coordinates
     const convertPoint = (point: { x: number; y: number }) => {
-      // First, convert from canvas coordinates to image coordinates during recording
       const recordingImageX = point.x - recordingImageOffsetX;
       const recordingImageY = point.y - recordingImageOffsetY;
-      
-      // Then scale from recording image size to current rendered image size
       const scaleX = renderedImageWidth / recordingCanvasWidth;
       const scaleY = renderedImageHeight / recordingCanvasHeight;
-      
-      // Finally, add the current image offset
       return {
         x: (recordingImageX * scaleX) + imageOffsetX,
         y: (recordingImageY * scaleY) + imageOffsetY
       };
     };
 
-    // DEBUG: Log coordinate transformation details
-    console.log('🎯 AmbienceSurvey Coordinate Transformation:', {
-      container: { width: containerRect.width, height: containerRect.height },
-      renderedImage: { width: renderedImageWidth, height: renderedImageHeight },
-      imageOffset: { x: imageOffsetX, y: imageOffsetY },
-      recordingCanvas: { width: recordingCanvasWidth, height: recordingCanvasHeight },
-      scales: { 
-        scaleX: (renderedImageWidth / recordingCanvasWidth).toFixed(4), 
-        scaleY: (renderedImageHeight / recordingCanvasHeight).toFixed(4) 
-      }
-    });
+    // Determine the elapsed session time to use for filtering
+    const effectiveStartTime = sessionStartTime ?? (sortedAnnotations[0]?.timestamp ?? 0);
+    const lastTimestamp = sortedAnnotations[sortedAnnotations.length - 1]?.timestamp ?? effectiveStartTime;
+    const totalSessionDurationMs = Math.max(lastTimestamp - effectiveStartTime, 1);
 
-    // DEBUG: Test transformation with first annotation's first few points
-    if (annotations.length > 0 && annotations[0].points.length > 0) {
-      console.log('🔍 Detailed coordinate transformation:');
-      console.log('Recording setup:', { 
-        canvasSize: { width: recordingCanvasWidth, height: recordingCanvasHeight },
-        imageOffset: { x: recordingImageOffsetX, y: recordingImageOffsetY }
-      });
-      console.log('Current setup:', {
-        container: { width: containerRect.width, height: containerRect.height },
-        renderedImage: { width: renderedImageWidth, height: renderedImageHeight },
-        imageOffset: { x: imageOffsetX, y: imageOffsetY }
-      });
-      
-      annotations[0].points.slice(0, 3).forEach((point, i) => {
-        // Manual step-by-step transformation for debugging
-        const recordingImageX = point.x - recordingImageOffsetX;
-        const recordingImageY = point.y - recordingImageOffsetY;
-        const scaleX = renderedImageWidth / recordingCanvasWidth;
-        const scaleY = renderedImageHeight / recordingCanvasHeight;
-        const finalX = (recordingImageX * scaleX) + imageOffsetX;
-        const finalY = (recordingImageY * scaleY) + imageOffsetY;
-        
-        console.log(`🎯 Point ${i} transformation:`, {
-          original: point,
-          step1_removeRecordingOffset: { x: recordingImageX, y: recordingImageY },
-          step2_scales: { scaleX: scaleX.toFixed(4), scaleY: scaleY.toFixed(4) },
-          step3_scaled: { x: (recordingImageX * scaleX).toFixed(2), y: (recordingImageY * scaleY).toFixed(2) },
-          step4_final: { x: finalX.toFixed(2), y: finalY.toFixed(2) },
-          withinBounds: {
-            x: finalX >= imageOffsetX && finalX <= imageOffsetX + renderedImageWidth,
-            y: finalY >= imageOffsetY && finalY <= imageOffsetY + renderedImageHeight
-          },
-          expectedPosition: `Should be at (${finalX.toFixed(0)}, ${finalY.toFixed(0)}) within image bounds (${imageOffsetX.toFixed(0)}, ${imageOffsetY.toFixed(0)}) to (${(imageOffsetX + renderedImageWidth).toFixed(0)}, ${(imageOffsetY + renderedImageHeight).toFixed(0)})`
-        });
-      });
-      
-      // 🧪 COORDINATE TEST: Add a test point to validate transformation
-      console.log('🧪 COORDINATE VALIDATION TEST:');
-      const testRecordingPoint = { x: 826, y: 654 }; // Middle of recording image (1652/2, 1095/2 - offset)
-      const testTransformed = convertPoint(testRecordingPoint);
-      console.log(`Test point: Recording(${testRecordingPoint.x}, ${testRecordingPoint.y}) → Survey(${testTransformed.x.toFixed(1)}, ${testTransformed.y.toFixed(1)})`);
-      console.log(`Should appear at center of survey image: (${(imageOffsetX + renderedImageWidth/2).toFixed(1)}, ${(imageOffsetY + renderedImageHeight/2).toFixed(1)})`);
-    }
-
-    // SIMPLIFIED: Show annotations based on progress - GUARANTEES traces will appear
-    const totalAnnotations = annotations.length;
-    
-    // Handle invalid audio duration (Infinity, NaN, 0) - fall back to animation progress
     const isValidAudioDuration = effectiveAudioUrl && duration > 0 && duration !== Infinity && !isNaN(duration);
-    const progressToUse = isValidAudioDuration ? (currentTime / duration) * 100 : animationProgress;
-    const annotationsToShow = Math.floor((progressToUse / 100) * totalAnnotations);
-    
-    // Show all annotations up to the current progress point
-    const visibleAnnotations = annotations.slice(0, Math.max(1, annotationsToShow + 1));
 
-    // DEBUG: Log the simplified logic (only when values change significantly)
-    if (Math.abs(progressToUse - (window as any).lastProgressLogged || 0) > 5) {
-      console.log('🎯 SIMPLIFIED Trace debug:', {
-        totalAnnotations,
-        isValidAudioDuration,
-        progressToUse: Math.round(progressToUse * 10) / 10, // Round to 1 decimal
-        annotationsToShow,
-        visibleAnnotations: visibleAnnotations.length,
-        currentTime: Math.round(currentTime * 10) / 10,
-        duration,
-        animationProgress: Math.round(animationProgress * 10) / 10,
-        hasAudio: !!effectiveAudioUrl,
-        isPlaying
-      });
-      (window as any).lastProgressLogged = progressToUse;
-    }
+    // When audio is playing, use audio currentTime directly (in ms) as elapsed time.
+    // When no audio, derive elapsed time proportionally from animationProgress.
+    const elapsedMs = isValidAudioDuration
+      ? currentTime * 1000
+      : (animationProgress / 100) * totalSessionDurationMs;
 
-    // Create test markers for coordinate validation
-    const debugElements = [];
-    if (annotations.length > 0) {
-      // Add a test circle at the center of the recording image
-      const testCenter = convertPoint({ x: 826, y: 654 }); // Center of recording space
-      debugElements.push(
-        <circle
-          key="debug-center"
-          cx={testCenter.x}
-          cy={testCenter.y}
-          r="5"
-          fill="red"
-          opacity="0.8"
-        />
-      );
-      
-      // Add a test circle for the first annotation's first point
-      if (annotations[0].points && annotations[0].points.length > 0) {
-        const firstPoint = convertPoint(annotations[0].points[0]);
-        debugElements.push(
-          <circle
-            key="debug-first-point"
-            cx={firstPoint.x}
-            cy={firstPoint.y}
-            r="3"
-            fill="blue"
-            opacity="0.8"
-          />
-        );
-      }
-    }
+    // Show only strokes that had been drawn by the elapsed point in the session
+    const visibleAnnotations = sortedAnnotations.filter(
+      a => (a.timestamp - effectiveStartTime) <= elapsedMs
+    );
 
     return [
-      ...debugElements,
-      ...visibleAnnotations.map((annotation, index) => {
+      ...visibleAnnotations.map((annotation) => {
         if (annotation.type === 'freehand' && annotation.points && annotation.points.length > 1) {
           const pathData = annotation.points.map((point, i) => {
             const convertedPoint = convertPoint(point);

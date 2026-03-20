@@ -23,7 +23,7 @@ const SessionPageContent: React.FC<{ imageId?: string; sessionId?: string }> = (
   const [sessionSummary, setSessionSummary] = useState<{ sessionName: string; imageUrl: string; audioUrl?: string; audioBlob?: Blob } | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showReplay, setShowReplay] = useState(false);
-  const { annotations, groups, sessionId: sessionIdFromContext, endSession } = useApplication();
+  const { annotations, groups, sessionId: sessionIdFromContext, sessionStartTime, endSession } = useApplication();
   const navigate = useNavigate();
 
   // Handler to trigger survey after session ends
@@ -142,6 +142,7 @@ const SessionPageContent: React.FC<{ imageId?: string; sessionId?: string }> = (
           imageUrl={sessionSummary.imageUrl}
           audioUrl={sessionSummary.audioUrl}
           audioBlob={sessionSummary.audioBlob}
+          sessionStartTime={sessionStartTime ?? undefined}
           onSubmit={handleSurveySubmit}
           onClose={() => setShowSurvey(false)}
           onViewReplay={() => {
@@ -160,6 +161,7 @@ const SessionPageContent: React.FC<{ imageId?: string; sessionId?: string }> = (
           sessionName={sessionSummary.sessionName}
           sessionDate={new Date().toLocaleDateString()}
           sessionDuration="4 mins"
+          sessionStartTime={sessionStartTime ?? undefined}
           onClose={() => setShowReplay(false)}
         />
       )}

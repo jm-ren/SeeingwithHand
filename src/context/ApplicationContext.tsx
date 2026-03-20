@@ -15,6 +15,7 @@ export interface ApplicationState {
   // Session state
   isSessionActive: boolean;
   sessionId: string | null;
+  sessionStartTime: number | null;
   sessionEvents: SessionEvent[];
   countdown: number;
   showCountdown: boolean;
@@ -97,6 +98,7 @@ interface ApplicationContextType {
   traces: TraceItem[];
   isSessionActive: boolean;
   sessionId: string | null;
+  sessionStartTime: number | null;
   countdown: number;
   showCountdown: boolean;
   isRecording: boolean;
@@ -113,6 +115,7 @@ const initialState: ApplicationState = {
   
   isSessionActive: false,
   sessionId: null,
+  sessionStartTime: null,
   sessionEvents: [],
   countdown: 3,
   showCountdown: true,
@@ -257,10 +260,11 @@ function applicationReducer(state: ApplicationState, action: ApplicationAction):
     }
     
     case 'START_SESSION': {
-      const newSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      const now = Date.now();
+      const newSessionId = `session-${now}-${Math.random().toString(36).substring(2, 9)}`;
       const startEvent: SessionEvent = {
         type: 'session_start',
-        timestamp: Date.now(),
+        timestamp: now,
         sessionId: newSessionId,
       };
       
@@ -268,6 +272,7 @@ function applicationReducer(state: ApplicationState, action: ApplicationAction):
         ...state,
         isSessionActive: true,
         sessionId: newSessionId,
+        sessionStartTime: now,
         sessionEvents: [startEvent],
         showCountdown: false,
       };
@@ -523,6 +528,7 @@ export const ApplicationProvider: React.FC<ApplicationProviderProps> = ({
     traces: state.traces,
     isSessionActive: state.isSessionActive,
     sessionId: state.sessionId,
+    sessionStartTime: state.sessionStartTime,
     countdown: state.countdown,
     showCountdown: state.showCountdown,
     isRecording: state.isRecording,

@@ -11,6 +11,7 @@ interface SessionReplayProps {
   sessionName: string;
   sessionDate?: string;
   sessionDuration?: string;
+  sessionStartTime?: number;
   onClose?: () => void;
 }
 
@@ -21,6 +22,7 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
   sessionName,
   sessionDate,
   sessionDuration,
+  sessionStartTime,
   onClose,
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -32,23 +34,26 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
-  // Calculate total duration from annotations
-  const totalDuration = annotations.length > 0 
-    ? Math.max(...annotations.map(a => a.timestamp)) - Math.min(...annotations.map(a => a.timestamp))
+  // Sort annotations by timestamp so replay always reflects drawing order
+  const sortedAnnotations = React.useMemo(
+    () => [...annotations].sort((a, b) => a.timestamp - b.timestamp),
+    [annotations]
+  );
+
+  // Anchor the timeline to the true session start (or first stroke if unavailable)
+  const replayBaseTime = sessionStartTime ?? (sortedAnnotations[0]?.timestamp ?? 0);
+
+  // Total duration spans from session start to last stroke
+  const totalDuration = sortedAnnotations.length > 0
+    ? Math.max(...sortedAnnotations.map(a => a.timestamp)) - replayBaseTime
     : 0;
 
   // Filter annotations up to current time
-  const currentAnnotations = annotations.filter(annotation => {
-    const annotationTime = annotation.timestamp - (annotations[0]?.timestamp || 0);
+  const currentAnnotations = sortedAnnotations.filter(annotation => {
+    const annotationTime = annotation.timestamp - replayBaseTime;
     return annotationTime <= currentTime;
   });
 
-  // Log annotation summary for debugging
-  useEffect(() => {
-    if (annotations.length > 0) {
-      console.log(`Session Replay loaded: ${annotations.length} annotations`);
-    }
-  }, [annotations]);
 
   // Progressive annotation drawing
   const drawProgressiveAnnotations = () => {
@@ -121,7 +126,7 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
     
     // Draw each annotation progressively
     currentAnnotations.forEach((annotation) => {
-      const annotationStartTime = annotation.timestamp - (annotations[0]?.timestamp || 0);
+      const annotationStartTime = annotation.timestamp - replayBaseTime;
       const timeSinceStart = currentTime - annotationStartTime;
 
       ctx.strokeStyle = annotation.color || '#2CA800';
