@@ -3,6 +3,12 @@ import { Annotation, Group } from '../types/annotations';
 import EyeVisualization from './EyeVisualization';
 import Legend from './Legend';
 import { createCoordinateTransform } from '../lib/utils';
+import {
+  sortAnnotationsByTime,
+  computeReplayBaseTime,
+  computeTotalDuration,
+  getAnnotationsAtTime,
+} from '../lib/replayUtils';
 
 interface SessionReplayProps {
   annotations: Annotation[];
@@ -36,23 +42,18 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
 
   // Sort annotations by timestamp so replay always reflects drawing order
   const sortedAnnotations = React.useMemo(
-    () => [...annotations].sort((a, b) => a.timestamp - b.timestamp),
+    () => sortAnnotationsByTime(annotations),
     [annotations]
   );
 
   // Anchor the timeline to the true session start (or first stroke if unavailable)
-  const replayBaseTime = sessionStartTime ?? (sortedAnnotations[0]?.timestamp ?? 0);
+  const replayBaseTime = computeReplayBaseTime(sortedAnnotations, sessionStartTime);
 
   // Total duration spans from session start to last stroke
-  const totalDuration = sortedAnnotations.length > 0
-    ? Math.max(...sortedAnnotations.map(a => a.timestamp)) - replayBaseTime
-    : 0;
+  const totalDuration = computeTotalDuration(sortedAnnotations, replayBaseTime);
 
   // Filter annotations up to current time
-  const currentAnnotations = sortedAnnotations.filter(annotation => {
-    const annotationTime = annotation.timestamp - replayBaseTime;
-    return annotationTime <= currentTime;
-  });
+  const currentAnnotations = getAnnotationsAtTime(sortedAnnotations, replayBaseTime, currentTime);
 
 
   // Progressive annotation drawing
