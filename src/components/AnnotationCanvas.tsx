@@ -482,50 +482,13 @@ const AnnotationCanvas = ({
             }
             break;
           case "frame":
-            // Draw as polygon - always draw completed annotation polygons with isPreviewMode=false
             if (annotation.points.length >= 3) {
               drawPolygon(ctx, annotation.points, false, fillColor, strokeColor, lineWidth, false);
-            } 
-            // For backward compatibility with old rectangle annotations
-            else if (annotation.points.length === 2) {
-              ctx.beginPath();
-              const width = annotation.points[1].x - annotation.points[0].x;
-              const height = annotation.points[1].y - annotation.points[0].y;
-              ctx.strokeStyle = strokeColor;
-              ctx.lineWidth = lineWidth;
-              ctx.strokeRect(
-                annotation.points[0].x,
-                annotation.points[0].y,
-                width,
-                height
-              );
             }
             break;
           case "area":
-            // Draw as filled polygon - always draw completed annotation polygons with isPreviewMode=false
             if (annotation.points.length >= 3) {
               drawPolygon(ctx, annotation.points, true, fillColor, strokeColor, lineWidth, false);
-            }
-            // For backward compatibility with old rectangle annotations
-            else if (annotation.points.length === 2) {
-              ctx.beginPath();
-              const width = annotation.points[1].x - annotation.points[0].x;
-              const height = annotation.points[1].y - annotation.points[0].y;
-              ctx.fillStyle = fillColor;
-              ctx.fillRect(
-                annotation.points[0].x,
-                annotation.points[0].y,
-                width,
-                height
-              );
-              ctx.strokeStyle = strokeColor;
-              ctx.lineWidth = lineWidth;
-              ctx.strokeRect(
-                annotation.points[0].x,
-                annotation.points[0].y,
-                width,
-                height
-              );
             }
             break;
           case "freehand":
@@ -949,19 +912,10 @@ const AnnotationCanvas = ({
           break;
         case "frame":
         case "area":
-          // For polygon shapes (3+ points)
           if (annotation.points.length >= 3) {
             if (isPointInPolygon(point, annotation.points, 5)) {
               return annotation;
             }
-          }
-          // For legacy rectangle shapes (2 points)
-          else if (
-            annotation.points[0] &&
-            annotation.points[1] &&
-            isPointInRect(point, annotation.points[0], annotation.points[1], 5)
-          ) {
-            return annotation;
           }
           break;
         case "freehand":
@@ -1386,15 +1340,11 @@ const AnnotationCanvas = ({
         return annotation.points.length >= 2 && 
                isPointNearLine(point, annotation.points[0], annotation.points[1]);
       case "frame":
-        return annotation.points.length >= 3 ? 
-               isPointInPolygon(point, annotation.points, 5) :
-               annotation.points.length === 2 && 
-               isPointInRect(point, annotation.points[0], annotation.points[1]);
+        return annotation.points.length >= 3 &&
+               isPointInPolygon(point, annotation.points, 5);
       case "area":
-        return annotation.points.length >= 3 ? 
-               isPointInPolygon(point, annotation.points, 5) :
-               annotation.points.length === 2 && 
-               isPointInRect(point, annotation.points[0], annotation.points[1]);
+        return annotation.points.length >= 3 &&
+               isPointInPolygon(point, annotation.points, 5);
       case "freehand":
         return isPointNearPolyline(point, annotation.points);
       default:

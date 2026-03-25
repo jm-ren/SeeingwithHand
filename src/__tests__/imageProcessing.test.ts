@@ -14,6 +14,7 @@ function makeCtx() {
     moveTo: vi.fn(),
     lineTo: vi.fn(),
     stroke: vi.fn(),
+    closePath: vi.fn(),
     rect: vi.fn(),
     fillRect: vi.fn(),
     strokeRect: vi.fn(),
@@ -86,24 +87,48 @@ describe("drawAnnotations", () => {
     expect((ctx as any).moveTo).not.toHaveBeenCalled();
   });
 
-  it("draws a frame (rectangle) annotation", () => {
+  it("draws a frame (closed polygon) annotation", () => {
     const annotation = makeAnnotation({
       type: "frame",
-      points: [{ x: 10, y: 20 }, { x: 110, y: 120 }],
+      points: [
+        { x: 10, y: 20 },
+        { x: 110, y: 20 },
+        { x: 110, y: 120 },
+        { x: 10, y: 120 },
+      ],
     });
     drawAnnotations(ctx, [annotation]);
-    expect((ctx as any).rect).toHaveBeenCalledWith(10, 20, 100, 100);
+    expect((ctx as any).moveTo).toHaveBeenCalledWith(10, 20);
+    expect((ctx as any).lineTo).toHaveBeenCalledTimes(3);
+    expect((ctx as any).closePath).toHaveBeenCalled();
     expect((ctx as any).stroke).toHaveBeenCalled();
   });
 
-  it("draws an area annotation (filled rect)", () => {
+  it("skips drawing a frame with fewer than 3 points", () => {
+    drawAnnotations(ctx, [makeAnnotation({ type: "frame", points: [{ x: 0, y: 0 }, { x: 50, y: 50 }] })]);
+    expect((ctx as any).moveTo).not.toHaveBeenCalled();
+  });
+
+  it("draws an area (filled closed polygon) annotation", () => {
     const annotation = makeAnnotation({
       type: "area",
-      points: [{ x: 0, y: 0 }, { x: 50, y: 50 }],
+      points: [
+        { x: 0, y: 0 },
+        { x: 50, y: 0 },
+        { x: 50, y: 50 },
+        { x: 0, y: 50 },
+      ],
     });
     drawAnnotations(ctx, [annotation]);
-    expect((ctx as any).fillRect).toHaveBeenCalledWith(0, 0, 50, 50);
-    expect((ctx as any).strokeRect).toHaveBeenCalledWith(0, 0, 50, 50);
+    expect((ctx as any).moveTo).toHaveBeenCalledWith(0, 0);
+    expect((ctx as any).closePath).toHaveBeenCalled();
+    expect((ctx as any).fill).toHaveBeenCalled();
+    expect((ctx as any).stroke).toHaveBeenCalled();
+  });
+
+  it("skips drawing an area with fewer than 3 points", () => {
+    drawAnnotations(ctx, [makeAnnotation({ type: "area", points: [{ x: 0, y: 0 }, { x: 50, y: 50 }] })]);
+    expect((ctx as any).moveTo).not.toHaveBeenCalled();
   });
 
   it("draws a freehand annotation through all points", () => {

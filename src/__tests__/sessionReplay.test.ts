@@ -1,11 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   sortAnnotationsByTime,
   computeReplayBaseTime,
   computeTotalDuration,
   getAnnotationsAtTime,
+  drawProgressiveAnnotation,
 } from "../lib/replayUtils";
-import { Annotation } from "../types/annotations";
+import { Annotation, Point } from "../types/annotations";
 
 function makeAnnotation(timestamp: number): Annotation {
   return {
@@ -124,5 +125,129 @@ describe("getAnnotationsAtTime", () => {
 
   it("handles empty annotations without crashing", () => {
     expect(getAnnotationsAtTime([], 0, 5000)).toEqual([]);
+  });
+});
+
+// ─── drawProgressiveAnnotation ────────────────────────────────────────────────
+
+function makeReplayCtx() {
+  return {
+    strokeStyle: "",
+    fillStyle: "",
+    lineWidth: 0,
+    globalAlpha: 1,
+    beginPath: vi.fn(),
+    arc: vi.fn(),
+    fill: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    stroke: vi.fn(),
+    closePath: vi.fn(),
+    rect: vi.fn(),
+    fillRect: vi.fn(),
+    strokeRect: vi.fn(),
+  } as unknown as CanvasRenderingContext2D;
+}
+
+// Identity transformer — no coordinate conversion needed for unit tests
+const identity = (p: Point): Point => p;
+
+// A rectangle drawn as a 4-point polygon: TL → TR → BR → BL
+const rectPoints: Point[] = [
+  { x: 0, y: 0 },    // TL
+  { x: 100, y: 0 },  // TR
+  { x: 100, y: 100 }, // BR
+  { x: 0, y: 100 },  // BL
+];
+
+function makeFrameAnnotation(points: Point[], timestamp = 5000): Annotation {
+  return {
+    id: "frame-test",
+    type: "frame",
+    points,
+    color: "#2CA800",
+    timestamp,
+  };
+}
+
+function makeAreaAnnotation(points: Point[], timestamp = 5000): Annotation {
+  return {
+    id: "area-test",
+    type: "area",
+    points,
+    color: "#2CA800",
+    timestamp,
+  };
+}
+
+describe("drawProgressiveAnnotation — frame polygon", () => {
+  let ctx: CanvasRenderingContext2D;
+
+  beforeEach(() => {
+    ctx = makeReplayCtx();
+  });
+
+  it("draws nothing when timeSinceStart is 0", () => {
+    drawProgressiveAnnotation(ctx, makeFrameAnnotation(rectPoints), 0, identity);
+    expect((ctx as any).stroke).not.toHaveBeenCalled();
+  });
+
+  // At 25% of the 1500ms animation (t=375ms), we are 1/4 of the way through
+  // a 4-segment path. The correct behaviour is to draw a partial first side —
+  // moveTo(TL) + one lineTo partway toward TR.
+  // Current bug: pointsToShow = floor(4 * 0.25) = 1, so the loop (i < 1) never
+  // executes and no lineTo is called — nothing is visible.
+  it("draws a partial first side at 25% progress (timeSinceStart=375)", () => {
+    drawProgressiveAnnotation(ctx, makeFrameAnnotation(rectPoints), 375, identity);
+    expect((ctx as any).moveTo).toHaveBeenCalledWith(0, 0);
+    expect((ctx as any).lineTo).toHaveBeenCalledTimes(1); // partial first side
+    expect((ctx as any).stroke).toHaveBeenCalled();
+  });
+
+  // At 50% (t=750ms), 2 out of 4 segments should be rendered: one complete side
+  // plus a partial second side in progress.
+  // Current bug: only 1 lineTo (the complete TL→TR side); partial second side missing.
+  it("draws one complete side and a partial second at 50% progress (timeSinceStart=750)", () => {
+    drawProgressiveAnnotation(ctx, makeFrameAnnotation(rectPoints), 750, identity);
+    expect((ctx as any).lineTo).toHaveBeenCalledTimes(2); // 1 complete + 1 partial
+    expect((ctx as any).stroke).toHaveBeenCalled();
+  });
+
+  // At 75% (t=1125ms), 3 out of 4 segments: two complete sides + partial third.
+  // Current bug: only 2 lineTo calls; partial third side missing.
+  it("draws two complete sides and a partial third at 75% progress (timeSinceStart=1125)", () => {
+    drawProgressiveAnnotation(ctx, makeFrameAnnotation(rectPoints), 1125, identity);
+    expect((ctx as any).lineTo).toHaveBeenCalledTimes(3); // 2 complete + 1 partial
+    expect((ctx as any).stroke).toHaveBeenCalled();
+  });
+
+  // At 100% (t=1500ms), all 4 sides are complete and the path is closed.
+  // This already works correctly with the current code.
+  it("draws all 4 sides and closes the path at 100% progress (timeSinceStart=1500)", () => {
+    drawProgressiveAnnotation(ctx, makeFrameAnnotation(rectPoints), 1500, identity);
+    expect((ctx as any).moveTo).toHaveBeenCalledWith(0, 0);
+    expect((ctx as any).lineTo).toHaveBeenCalledTimes(3); // TL→TR, TR→BR, BR→BL
+    expect((ctx as any).closePath).toHaveBeenCalled();    // closes BL→TL
+    expect((ctx as any).stroke).toHaveBeenCalled();
+  });
+});
+
+describe("drawProgressiveAnnotation — area polygon", () => {
+  let ctx: CanvasRenderingContext2D;
+
+  beforeEach(() => {
+    ctx = makeReplayCtx();
+  });
+
+  it("fills the area only when animation is complete (timeSinceStart=1500)", () => {
+    drawProgressiveAnnotation(ctx, makeAreaAnnotation(rectPoints), 1500, identity);
+    expect((ctx as any).closePath).toHaveBeenCalled();
+    expect((ctx as any).fill).toHaveBeenCalled();
+    expect((ctx as any).stroke).toHaveBeenCalled();
+  });
+
+  it("does not fill the area before animation is complete (timeSinceStart=750)", () => {
+    drawProgressiveAnnotation(ctx, makeAreaAnnotation(rectPoints), 750, identity);
+    expect((ctx as any).fill).not.toHaveBeenCalled();
   });
 });

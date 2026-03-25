@@ -8,6 +8,7 @@ import {
   computeReplayBaseTime,
   computeTotalDuration,
   getAnnotationsAtTime,
+  drawProgressiveAnnotation,
 } from '../lib/replayUtils';
 
 interface SessionReplayProps {
@@ -129,145 +130,7 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
     currentAnnotations.forEach((annotation) => {
       const annotationStartTime = annotation.timestamp - replayBaseTime;
       const timeSinceStart = currentTime - annotationStartTime;
-
-      ctx.strokeStyle = annotation.color || '#2CA800';
-      ctx.fillStyle = annotation.color || '#2CA800';
-      ctx.lineWidth = 2;
-
-      switch (annotation.type) {
-        case 'point':
-          if (annotation.points[0]) {
-            const point = convertPoint(annotation.points[0]);
-            ctx.beginPath();
-            ctx.arc(point.x, point.y, 6, 0, Math.PI * 2);
-            ctx.fill();
-          }
-          break;
-
-        case 'line':
-          if (annotation.points.length >= 2) {
-            const startPoint = convertPoint(annotation.points[0]);
-            const endPoint = convertPoint(annotation.points[1]);
-            
-            // Animate line drawing based on time since annotation started
-            const animationDuration = 1000; // 1 second to draw line
-            const animationProgress = Math.min(timeSinceStart / animationDuration, 1);
-            
-            const currentEndX = startPoint.x + (endPoint.x - startPoint.x) * animationProgress;
-            const currentEndY = startPoint.y + (endPoint.y - startPoint.y) * animationProgress;
-            
-            ctx.beginPath();
-            ctx.moveTo(startPoint.x, startPoint.y);
-            ctx.lineTo(currentEndX, currentEndY);
-            ctx.stroke();
-          }
-          break;
-
-        case 'freehand':
-          if (annotation.points.length > 1) {
-            const animationDuration = 2000; // 2 seconds to draw freehand
-            const animationProgress = Math.min(timeSinceStart / animationDuration, 1);
-            const pointsToShow = Math.floor(annotation.points.length * animationProgress);
-            
-            if (pointsToShow > 0) {
-              ctx.beginPath();
-              const firstPoint = convertPoint(annotation.points[0]);
-              ctx.moveTo(firstPoint.x, firstPoint.y);
-              
-              for (let i = 1; i < pointsToShow; i++) {
-                const point = convertPoint(annotation.points[i]);
-                ctx.lineTo(point.x, point.y);
-              }
-              
-              // If we're partway through the last segment, draw partial line
-              if (pointsToShow < annotation.points.length) {
-                const lastCompletePoint = convertPoint(annotation.points[pointsToShow - 1]);
-                const nextPoint = convertPoint(annotation.points[pointsToShow]);
-                const segmentProgress = (annotation.points.length * animationProgress) - pointsToShow;
-                
-                const partialEndX = lastCompletePoint.x + (nextPoint.x - lastCompletePoint.x) * segmentProgress;
-                const partialEndY = lastCompletePoint.y + (nextPoint.y - lastCompletePoint.y) * segmentProgress;
-                
-                ctx.lineTo(partialEndX, partialEndY);
-              }
-              
-              ctx.stroke();
-            }
-          }
-          break;
-
-        case 'frame':
-        case 'area':
-          if (annotation.points.length >= 3) {
-            // Modern polygon format - animate point by point
-            const animationDuration = 1500; // 1.5 seconds to draw frame/area
-            const animationProgress = Math.min(timeSinceStart / animationDuration, 1);
-            const pointsToShow = Math.floor(annotation.points.length * animationProgress);
-            
-            if (pointsToShow > 0) {
-              ctx.beginPath();
-              const firstPoint = convertPoint(annotation.points[0]);
-              ctx.moveTo(firstPoint.x, firstPoint.y);
-              
-              for (let i = 1; i < pointsToShow; i++) {
-                const point = convertPoint(annotation.points[i]);
-                ctx.lineTo(point.x, point.y);
-              }
-              
-              // Close the path if animation is complete
-              if (animationProgress >= 1) {
-                ctx.closePath();
-              }
-              
-              ctx.stroke();
-              
-              // Fill if area and animation is complete
-              if (annotation.type === 'area' && animationProgress >= 1) {
-                ctx.globalAlpha = 0.2;
-                ctx.fill();
-                ctx.globalAlpha = 1;
-              }
-            }
-          } else if (annotation.points.length === 2) {
-            // Legacy rectangle format - animate rectangle drawing
-            const animationDuration = 1500; // 1.5 seconds to draw rectangle
-            const animationProgress = Math.min(timeSinceStart / animationDuration, 1);
-            
-            if (animationProgress > 0) {
-              const startPoint = convertPoint(annotation.points[0]);
-              const endPoint = convertPoint(annotation.points[1]);
-              console.log('Rectangle points converted:', annotation.points, '->', { startPoint, endPoint });
-              
-              const fullWidth = endPoint.x - startPoint.x;
-              const fullHeight = endPoint.y - startPoint.y;
-              
-              // Animate rectangle drawing progressively
-              let currentWidth = fullWidth * animationProgress;
-              let currentHeight = fullHeight * animationProgress;
-              
-              ctx.beginPath();
-              ctx.strokeRect(startPoint.x, startPoint.y, currentWidth, currentHeight);
-              
-              // Fill if area and animation is complete
-              if (annotation.type === 'area' && animationProgress >= 1) {
-                ctx.globalAlpha = 0.2;
-                ctx.fillRect(startPoint.x, startPoint.y, fullWidth, fullHeight);
-                ctx.globalAlpha = 1;
-              }
-            }
-          }
-          break;
-
-        default:
-          // For any other annotation types, just show as point
-          if (annotation.points[0]) {
-            const point = convertPoint(annotation.points[0]);
-            ctx.beginPath();
-            ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
-            ctx.fill();
-          }
-          break;
-      }
+      drawProgressiveAnnotation(ctx, annotation, timeSinceStart, convertPoint);
     });
   };
 

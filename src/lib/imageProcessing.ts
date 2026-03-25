@@ -116,13 +116,13 @@ export function drawAnnotations(
         }
         break;
       case "frame":
-        if (points.length >= 2) {
-          drawFrame(ctx, points[0], points[1], scale);
+        if (points.length >= 3) {
+          drawFrame(ctx, points, scale);
         }
         break;
       case "area":
-        if (points.length >= 2) {
-          drawArea(ctx, points[0], points[1], scale);
+        if (points.length >= 3) {
+          drawArea(ctx, points, scale);
         }
         break;
       case "freehand":
@@ -165,38 +165,40 @@ function drawLine(
 }
 
 /**
- * Draws a frame (rectangle) on the canvas
+ * Draws a frame (closed polygon) on the canvas
  */
 function drawFrame(
   ctx: CanvasRenderingContext2D,
-  start: Point,
-  end: Point,
+  points: Point[],
   scale: number
 ): void {
-  const width = (end.x - start.x) * scale;
-  const height = (end.y - start.y) * scale;
-  
   ctx.beginPath();
-  ctx.rect(start.x * scale, start.y * scale, width, height);
+  ctx.moveTo(points[0].x * scale, points[0].y * scale);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i].x * scale, points[i].y * scale);
+  }
+  ctx.closePath();
   ctx.stroke();
 }
 
 /**
- * Draws an area (filled rectangle) on the canvas
+ * Draws an area (filled closed polygon) on the canvas
  */
 function drawArea(
   ctx: CanvasRenderingContext2D,
-  start: Point,
-  end: Point,
+  points: Point[],
   scale: number
 ): void {
-  const width = (end.x - start.x) * scale;
-  const height = (end.y - start.y) * scale;
-  
+  ctx.beginPath();
+  ctx.moveTo(points[0].x * scale, points[0].y * scale);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i].x * scale, points[i].y * scale);
+  }
+  ctx.closePath();
   ctx.globalAlpha = 0.3;
-  ctx.fillRect(start.x * scale, start.y * scale, width, height);
+  ctx.fill();
   ctx.globalAlpha = 1;
-  ctx.strokeRect(start.x * scale, start.y * scale, width, height);
+  ctx.stroke();
 }
 
 /**

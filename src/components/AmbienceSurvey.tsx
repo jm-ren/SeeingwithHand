@@ -485,29 +485,6 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
                />
              </g>
            );
-         } else if (annotation.points.length === 2) {
-           // Legacy rectangle format
-           const startPoint = convertPoint(annotation.points[0]);
-           const endPoint = convertPoint(annotation.points[1]);
-           
-           const width = endPoint.x - startPoint.x;
-           const height = endPoint.y - startPoint.y;
-           
-           return (
-             <g key={annotation.id}>
-               <rect
-                 x={startPoint.x}
-                 y={startPoint.y}
-                 width={width}
-                 height={height}
-                 stroke={annotation.color || '#2CA800'}
-                 strokeWidth="2"
-                 fill={annotation.type === 'area' ? annotation.color || '#2CA800' : 'none'}
-                 fillOpacity={annotation.type === 'area' ? 0.2 : 0}
-                 opacity={0.8}
-               />
-             </g>
-           );
          }
        }
        

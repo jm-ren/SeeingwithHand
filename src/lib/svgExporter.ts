@@ -107,22 +107,6 @@ export function exportAnnotationsToSvg(
             svgContent += ` data-timestamp="${annotation.timestamp}"`;
           }
           svgContent += `/>\n`;
-        } else if (annotation.points.length === 2) {
-          // Legacy rectangle format
-          const start = annotation.points[0];
-          const end = annotation.points[1];
-          const width = end.x - start.x;
-          const height = end.y - start.y;
-          
-          svgContent += `    <rect x="${start.x}" y="${start.y}" 
-                     width="${width}" height="${height}" 
-                     stroke="${color}" stroke-width="${strokeWidth}" 
-                     fill="none" opacity="${opacity}" 
-                     class="annotation-trace"`;
-          if (includeTimestamps) {
-            svgContent += ` data-timestamp="${annotation.timestamp}"`;
-          }
-          svgContent += `/>\n`;
         }
         break;
 
@@ -136,22 +120,6 @@ export function exportAnnotationsToSvg(
           svgContent += `    <path d="${pathData}" 
                      stroke="${color}" stroke-width="${strokeWidth}" 
                      fill="${color}" opacity="${opacity}" 
-                     class="annotation-area"`;
-          if (includeTimestamps) {
-            svgContent += ` data-timestamp="${annotation.timestamp}"`;
-          }
-          svgContent += `/>\n`;
-        } else if (annotation.points.length === 2) {
-          // Legacy rectangle format with fill
-          const start = annotation.points[0];
-          const end = annotation.points[1];
-          const width = end.x - start.x;
-          const height = end.y - start.y;
-          
-          svgContent += `    <rect x="${start.x}" y="${start.y}" 
-                     width="${width}" height="${height}" 
-                     stroke="${color}" stroke-width="${strokeWidth}" 
-                     fill="${color}" fill-opacity="0.2" opacity="${opacity}" 
                      class="annotation-area"`;
           if (includeTimestamps) {
             svgContent += ` data-timestamp="${annotation.timestamp}"`;

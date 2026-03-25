@@ -1,4 +1,4 @@
-import { Annotation } from "../types/annotations";
+import { Annotation, Point } from "../types/annotations";
 
 /**
  * Returns a new array of annotations sorted ascending by timestamp.
@@ -30,6 +30,128 @@ export function computeTotalDuration(
 ): number {
   if (sortedAnnotations.length === 0) return 0;
   return Math.max(...sortedAnnotations.map((a) => a.timestamp)) - replayBaseTime;
+}
+
+/**
+ * Draws a single annotation onto a canvas context with time-based progressive
+ * animation. This is the per-annotation drawing logic extracted from SessionReplay
+ * so it can be unit-tested independently of the React component.
+ *
+ * @param ctx         The 2D canvas context to draw onto
+ * @param annotation  The annotation to draw
+ * @param timeSinceStart  Milliseconds elapsed since this annotation's start time
+ * @param convertPoint    Coordinate transformer (recording space → display space)
+ */
+export function drawProgressiveAnnotation(
+  ctx: CanvasRenderingContext2D,
+  annotation: Annotation,
+  timeSinceStart: number,
+  convertPoint: (p: Point) => Point
+): void {
+  ctx.strokeStyle = annotation.color || '#2CA800';
+  ctx.fillStyle = annotation.color || '#2CA800';
+  ctx.lineWidth = 2;
+
+  switch (annotation.type) {
+    case 'point':
+      if (annotation.points[0]) {
+        const point = convertPoint(annotation.points[0]);
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+
+    case 'line':
+      if (annotation.points.length >= 2) {
+        const startPoint = convertPoint(annotation.points[0]);
+        const endPoint = convertPoint(annotation.points[1]);
+
+        const lineDuration = 1000;
+        const lineProgress = Math.min(timeSinceStart / lineDuration, 1);
+
+        const currentEndX = startPoint.x + (endPoint.x - startPoint.x) * lineProgress;
+        const currentEndY = startPoint.y + (endPoint.y - startPoint.y) * lineProgress;
+
+        ctx.beginPath();
+        ctx.moveTo(startPoint.x, startPoint.y);
+        ctx.lineTo(currentEndX, currentEndY);
+        ctx.stroke();
+      }
+      break;
+
+    case 'freehand':
+      if (annotation.points.length > 1) {
+        const freehandDuration = 2000;
+        const freehandProgress = Math.min(timeSinceStart / freehandDuration, 1);
+        const pointsToShow = Math.floor(annotation.points.length * freehandProgress);
+
+        if (pointsToShow > 0) {
+          ctx.beginPath();
+          const firstPoint = convertPoint(annotation.points[0]);
+          ctx.moveTo(firstPoint.x, firstPoint.y);
+
+          for (let i = 1; i < pointsToShow; i++) {
+            const point = convertPoint(annotation.points[i]);
+            ctx.lineTo(point.x, point.y);
+          }
+
+          if (pointsToShow < annotation.points.length) {
+            const lastComplete = convertPoint(annotation.points[pointsToShow - 1]);
+            const next = convertPoint(annotation.points[pointsToShow]);
+            const segProgress = (annotation.points.length * freehandProgress) - pointsToShow;
+            ctx.lineTo(
+              lastComplete.x + (next.x - lastComplete.x) * segProgress,
+              lastComplete.y + (next.y - lastComplete.y) * segProgress
+            );
+          }
+
+          ctx.stroke();
+        }
+      }
+      break;
+
+    case 'frame':
+    case 'area':
+      if (annotation.points.length >= 3) {
+        const animationDuration = 1500;
+        const animationProgress = Math.min(timeSinceStart / animationDuration, 1);
+        const pointsToShow = Math.floor(annotation.points.length * animationProgress);
+
+        if (pointsToShow > 0) {
+          ctx.beginPath();
+          const firstPoint = convertPoint(annotation.points[0]);
+          ctx.moveTo(firstPoint.x, firstPoint.y);
+
+          for (let i = 1; i < pointsToShow; i++) {
+            const point = convertPoint(annotation.points[i]);
+            ctx.lineTo(point.x, point.y);
+          }
+
+          if (animationProgress >= 1) {
+            ctx.closePath();
+          }
+
+          ctx.stroke();
+
+          if (annotation.type === 'area' && animationProgress >= 1) {
+            ctx.globalAlpha = 0.2;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+          }
+        }
+      }
+      break;
+
+    default:
+      if (annotation.points[0]) {
+        const point = convertPoint(annotation.points[0]);
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+  }
 }
 
 /**
