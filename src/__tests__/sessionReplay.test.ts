@@ -192,32 +192,28 @@ describe("drawProgressiveAnnotation — frame polygon", () => {
     expect((ctx as any).stroke).not.toHaveBeenCalled();
   });
 
-  // At 25% of the 1500ms animation (t=375ms), we are 1/4 of the way through
-  // a 4-segment path. The correct behaviour is to draw a partial first side —
-  // moveTo(TL) + one lineTo partway toward TR.
-  // Current bug: pointsToShow = floor(4 * 0.25) = 1, so the loop (i < 1) never
-  // executes and no lineTo is called — nothing is visible.
-  it("draws a partial first side at 25% progress (timeSinceStart=375)", () => {
+  // At 25% of 1500ms (t=375ms): segmentsProgress = 4 * 0.25 = 1.0 exactly,
+  // so 1 complete segment is drawn (TL→TR). No partial segment at this boundary.
+  it("draws one complete side at 25% progress (timeSinceStart=375)", () => {
     drawProgressiveAnnotation(ctx, makeFrameAnnotation(rectPoints), 375, identity);
     expect((ctx as any).moveTo).toHaveBeenCalledWith(0, 0);
-    expect((ctx as any).lineTo).toHaveBeenCalledTimes(1); // partial first side
+    expect((ctx as any).lineTo).toHaveBeenCalledTimes(1);
     expect((ctx as any).stroke).toHaveBeenCalled();
   });
 
-  // At 50% (t=750ms), 2 out of 4 segments should be rendered: one complete side
-  // plus a partial second side in progress.
-  // Current bug: only 1 lineTo (the complete TL→TR side); partial second side missing.
-  it("draws one complete side and a partial second at 50% progress (timeSinceStart=750)", () => {
+  // At 50% (t=750ms): segmentsProgress = 4 * 0.5 = 2.0 exactly,
+  // so 2 complete segments are drawn (TL→TR, TR→BR).
+  it("draws two complete sides at 50% progress (timeSinceStart=750)", () => {
     drawProgressiveAnnotation(ctx, makeFrameAnnotation(rectPoints), 750, identity);
-    expect((ctx as any).lineTo).toHaveBeenCalledTimes(2); // 1 complete + 1 partial
+    expect((ctx as any).lineTo).toHaveBeenCalledTimes(2);
     expect((ctx as any).stroke).toHaveBeenCalled();
   });
 
-  // At 75% (t=1125ms), 3 out of 4 segments: two complete sides + partial third.
-  // Current bug: only 2 lineTo calls; partial third side missing.
-  it("draws two complete sides and a partial third at 75% progress (timeSinceStart=1125)", () => {
+  // At 75% (t=1125ms): segmentsProgress = 4 * 0.75 = 3.0 exactly,
+  // so 3 complete segments are drawn (TL→TR, TR→BR, BR→BL).
+  it("draws three complete sides at 75% progress (timeSinceStart=1125)", () => {
     drawProgressiveAnnotation(ctx, makeFrameAnnotation(rectPoints), 1125, identity);
-    expect((ctx as any).lineTo).toHaveBeenCalledTimes(3); // 2 complete + 1 partial
+    expect((ctx as any).lineTo).toHaveBeenCalledTimes(3);
     expect((ctx as any).stroke).toHaveBeenCalled();
   });
 

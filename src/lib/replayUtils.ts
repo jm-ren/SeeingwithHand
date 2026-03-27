@@ -172,6 +172,68 @@ export function drawProgressiveAnnotation(
   }
 }
 
+export interface PolygonSVGResult {
+  pathData: string;
+  isClosed: boolean;
+  shouldFill: boolean;
+}
+
+/**
+ * SVG-output equivalent of the frame/area branch in drawProgressiveAnnotation.
+ * Uses the same segment-based math (1500ms duration, edge interpolation, closing
+ * segment) but returns an SVG path string instead of issuing canvas commands.
+ *
+ * This allows AmbienceSurvey (SVG) and SessionReplay (canvas) to share one
+ * animation algorithm.
+ */
+export function computeProgressivePolygonPath(
+  points: Point[],
+  annotationType: "frame" | "area",
+  timeSinceStart: number,
+  convertPoint: (p: Point) => Point
+): PolygonSVGResult {
+  if (points.length < 3 || timeSinceStart <= 0) {
+    return { pathData: "", isClosed: false, shouldFill: false };
+  }
+
+  const animationDuration = 1500;
+  const totalSegments = points.length;
+  const progress = Math.min(timeSinceStart / animationDuration, 1);
+  const segmentsProgress = totalSegments * progress;
+  const completeSegments = Math.floor(segmentsProgress);
+
+  const parts: string[] = [];
+  const first = convertPoint(points[0]);
+  parts.push(`M ${first.x} ${first.y}`);
+
+  for (let i = 1; i <= Math.min(completeSegments, points.length - 1); i++) {
+    const p = convertPoint(points[i]);
+    parts.push(`L ${p.x} ${p.y}`);
+  }
+
+  const partialProgress = segmentsProgress - completeSegments;
+  if (progress < 1 && partialProgress > 0) {
+    const fromIndex = Math.min(completeSegments, points.length - 1);
+    const from = convertPoint(points[fromIndex]);
+    const toIndex = fromIndex === points.length - 1 ? 0 : fromIndex + 1;
+    const to = convertPoint(points[toIndex]);
+    parts.push(
+      `L ${from.x + (to.x - from.x) * partialProgress} ${from.y + (to.y - from.y) * partialProgress}`
+    );
+  }
+
+  const isClosed = progress >= 1;
+  if (isClosed) {
+    parts.push("Z");
+  }
+
+  return {
+    pathData: parts.join(" "),
+    isClosed,
+    shouldFill: annotationType === "area" && isClosed,
+  };
+}
+
 /**
  * Filters annotations to only those whose relative time is at or before
  * currentTime. Assumes sortedAnnotations are already sorted by timestamp.

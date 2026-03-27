@@ -6,6 +6,7 @@ import EyeVisualization from './EyeVisualization';
 import Legend from './Legend';
 import AdditionalContextFolder, { AdditionalContextItem } from './AdditionalContextFolder';
 import { createCoordinateTransform } from '../lib/utils';
+import { computeProgressivePolygonPath } from '../lib/replayUtils';
 
 interface AmbienceSurveyProps {
   annotations: Annotation[];
@@ -460,25 +461,24 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
          );
        } else if ((annotation.type === 'frame' || annotation.type === 'area') && annotation.points && annotation.points.length > 0) {
          if (annotation.points.length >= 3) {
-           // Modern polygon format - show progressively based on animation progress
-                       const pointsToShow = Math.max(1, Math.floor(annotation.points.length * Math.min((animationProgress + 10) / 100, 1)));
-           
-           const pathData = annotation.points.slice(0, pointsToShow).map((point, i) => {
-             const convertedPoint = convertPoint(point);
-             return i === 0 ? `M ${convertedPoint.x} ${convertedPoint.y}` : `L ${convertedPoint.x} ${convertedPoint.y}`;
-           }).join(' ');
-           
-           // Close path if we've shown all points
-           const finalPath = pointsToShow >= annotation.points.length ? pathData + ' Z' : pathData;
+           const timeSinceStart = elapsedMs - (annotation.timestamp - effectiveStartTime);
+           const { pathData, shouldFill } = computeProgressivePolygonPath(
+             annotation.points,
+             annotation.type as 'frame' | 'area',
+             timeSinceStart,
+             convertPoint
+           );
+
+           if (!pathData) return null;
            
            return (
              <g key={annotation.id}>
                <path
-                 d={finalPath}
+                 d={pathData}
                  stroke={annotation.color || '#2CA800'}
                  strokeWidth="2"
-                 fill={annotation.type === 'area' && pointsToShow >= annotation.points.length ? annotation.color || '#2CA800' : 'none'}
-                 fillOpacity={annotation.type === 'area' && pointsToShow >= annotation.points.length ? 0.2 : 0}
+                 fill={shouldFill ? annotation.color || '#2CA800' : 'none'}
+                 fillOpacity={shouldFill ? 0.2 : 0}
                  opacity={0.8}
                  strokeLinecap="round"
                  strokeLinejoin="round"
