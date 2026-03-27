@@ -115,17 +115,35 @@ export function drawProgressiveAnnotation(
     case 'area':
       if (annotation.points.length >= 3) {
         const animationDuration = 1500;
+        // The closing segment (last point → first point) is one extra segment
+        const totalSegments = annotation.points.length; // N vertices = N segments (last closes back)
         const animationProgress = Math.min(timeSinceStart / animationDuration, 1);
-        const pointsToShow = Math.floor(annotation.points.length * animationProgress);
+        const segmentsProgress = totalSegments * animationProgress;
+        const completeSegments = Math.floor(segmentsProgress);
 
-        if (pointsToShow > 0) {
+        if (segmentsProgress > 0) {
           ctx.beginPath();
           const firstPoint = convertPoint(annotation.points[0]);
           ctx.moveTo(firstPoint.x, firstPoint.y);
 
-          for (let i = 1; i < pointsToShow; i++) {
+          // Draw all fully complete segments
+          for (let i = 1; i <= Math.min(completeSegments, annotation.points.length - 1); i++) {
             const point = convertPoint(annotation.points[i]);
             ctx.lineTo(point.x, point.y);
+          }
+
+          // Draw the partial segment currently in progress
+          const partialProgress = segmentsProgress - completeSegments;
+          if (animationProgress < 1 && partialProgress > 0) {
+            const fromIndex = Math.min(completeSegments, annotation.points.length - 1);
+            const from = convertPoint(annotation.points[fromIndex]);
+            // The closing segment connects last point back to first
+            const toIndex = fromIndex === annotation.points.length - 1 ? 0 : fromIndex + 1;
+            const to = convertPoint(annotation.points[toIndex]);
+            ctx.lineTo(
+              from.x + (to.x - from.x) * partialProgress,
+              from.y + (to.y - from.y) * partialProgress
+            );
           }
 
           if (animationProgress >= 1) {
