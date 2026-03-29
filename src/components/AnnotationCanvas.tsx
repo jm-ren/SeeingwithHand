@@ -10,6 +10,7 @@ import { Undo2 } from "lucide-react";
 import { useApplication } from "../context/ApplicationContext";
 import { Point, Annotation, Tool, Group } from "../types/annotations";
 import { appSettings } from "../config/appConfig";
+import { normalizeToImage, imageToDisplay } from "../lib/replayUtils";
 
 interface AnnotationCanvasProps {
   imageUrl?: string;
@@ -69,6 +70,24 @@ const AnnotationCanvas = ({
   const [previousTool, setPreviousTool] = useState<Tool | null>(null);
   const [isShiftKeyDown, setIsShiftKeyDown] = useState(false);
   
+  // Wrapper: normalize points from canvas space to [0,1] image space before storing
+  const normalizeAndAdd = useCallback((data: Omit<Annotation, 'id' | 'timestamp'>) => {
+    if (!imageScaling) return;
+    addAnnotation({
+      ...data,
+      points: data.points.map(p => normalizeToImage(p, imageScaling)),
+    });
+  }, [addAnnotation, imageScaling]);
+
+  // Annotations with points converted back to canvas space for live drawing & hit-testing
+  const canvasAnnotations = React.useMemo(() => {
+    if (!imageScaling) return annotations;
+    return annotations.map(a => ({
+      ...a,
+      points: a.points.map(p => imageToDisplay(p, imageScaling)),
+    }));
+  }, [annotations, imageScaling]);
+
   // --- V2 Tracing State ---
   const [pointerDown, setPointerDown] = useState(false);
   const [pointerStart, setPointerStart] = useState<{ point: Point; time: number } | null>(null);
@@ -122,7 +141,7 @@ const AnnotationCanvas = ({
     if (hoverTrace.length > 5) { // Only store meaningful traces
       const startTime = Date.now() - hoverTrace.length * 16; // Approximate duration
       const gesture = classifyFreehandGesture(hoverTrace, startTime, true);
-      addAnnotation({
+      normalizeAndAdd({
         type: "hover",
         points: hoverTrace,
         color: selectedColor,
@@ -132,7 +151,7 @@ const AnnotationCanvas = ({
       });
     }
     setHoverTrace([]);
-  }, [hoverTrace, addAnnotation, selectedColor]);
+  }, [hoverTrace, normalizeAndAdd, selectedColor]);
 
   // Initialize and load image
   useEffect(() => {
@@ -398,7 +417,7 @@ const AnnotationCanvas = ({
     try {
       // Draw group backgrounds first
       groups.forEach((group) => {
-        const groupAnnotations = annotations.filter(
+        const groupAnnotations = canvasAnnotations.filter(
           (a) => a.groupIds?.includes(group.id),
         );
         if (groupAnnotations.length === 0) return;
@@ -434,7 +453,7 @@ const AnnotationCanvas = ({
 
       // Draw all completed annotations first - these should be completely independent
       // from any polygon currently being created
-      annotations.forEach((annotation) => {
+      canvasAnnotations.forEach((annotation) => {
         // Determine if this annotation is selected based on selectedAnnotations
         const isSelected = selectedAnnotations.includes(annotation.id);
         // Use selected color for all traces, with opacity adjustment for selection state
@@ -673,7 +692,7 @@ const AnnotationCanvas = ({
     } catch (error) {
       console.error("Error drawing annotations:", error);
     }
-  }, [annotations, currentAnnotation, groups, selectedTool, isCreatingPolygon, tempMousePos, isDrawing, selectedAnnotations, selectedColor]);
+  }, [canvasAnnotations, currentAnnotation, groups, selectedTool, isCreatingPolygon, tempMousePos, isDrawing, selectedAnnotations, selectedColor]);
 
   // --- V2 Drawing Logic ---
   const drawV2Trace = useCallback((ctx: CanvasRenderingContext2D) => {
@@ -878,11 +897,11 @@ const AnnotationCanvas = ({
     }
   }, [selectedAnnotations, createGroup, recordInteractionEvent, isSessionActive]);
 
-  // Find annotation at a specific point
+  // Find annotation at a specific point (using canvas-space coordinates)
   const findAnnotationAtPoint = useCallback((point: Point): Annotation | null => {
     // Search in reverse order (top to bottom in z-index)
-    for (let i = annotations.length - 1; i >= 0; i--) {
-      const annotation = annotations[i];
+    for (let i = canvasAnnotations.length - 1; i >= 0; i--) {
+      const annotation = canvasAnnotations[i];
       
       switch (annotation.type) {
         case "point":
@@ -927,7 +946,7 @@ const AnnotationCanvas = ({
     }
     
     return null;
-  }, [annotations]);
+  }, [canvasAnnotations]);
 
   // Update keydown event listeners for shift+select and shift+space behavior
   useEffect(() => {
@@ -1086,7 +1105,7 @@ const AnnotationCanvas = ({
       // Store coordinates in canvas space for transformation during playback
       
       // Add annotation as point, let context generate timestamp
-      addAnnotation({
+      normalizeAndAdd({
         type: "point",
         points: [currentTrace[0]],
         color: selectedColor,
@@ -1101,7 +1120,7 @@ const AnnotationCanvas = ({
       
       // For explicit freehand tool, always create freehand annotation even with single point
       if (selectedTool === "freehand") {
-        addAnnotation({
+        normalizeAndAdd({
           type: "freehand",
           points: currentTrace,
           color: selectedColor,
@@ -1111,7 +1130,7 @@ const AnnotationCanvas = ({
       } else if (currentTrace.length > 1) {
         // For automatic classification, require multiple points
         const gesture = classifyFreehandGesture(currentTrace, pointerStart?.time || 0, false);
-        addAnnotation({
+        normalizeAndAdd({
           type: "freehand",
           points: currentTrace,
           color: selectedColor,
@@ -1126,7 +1145,7 @@ const AnnotationCanvas = ({
     setCurrentTrace([]);
     setTraceType("none");
     setDwellRadius(5);
-  }, [pointerDown, traceType, currentTrace, pointerStart, selectedTool, addAnnotation, selectedColor, imageScaling, imageDimensions]);
+  }, [pointerDown, traceType, currentTrace, pointerStart, selectedTool, normalizeAndAdd, selectedColor, imageScaling, imageDimensions]);
 
   const handlePointerLeaveV2 = useCallback((e?: React.PointerEvent<HTMLCanvasElement>) => {
     if (e) e.preventDefault();
@@ -1172,7 +1191,7 @@ const AnnotationCanvas = ({
 
     // Handle selection tool
     if (selectedTool === "select" || isShiftKeyDown) {
-      const clickedAnnotation = annotations.find(annotation => 
+      const clickedAnnotation = canvasAnnotations.find(annotation => 
         isPointInAnnotation(clickPoint, annotation)
       );
       
@@ -1202,7 +1221,7 @@ const AnnotationCanvas = ({
     switch (selectedTool) {
       case "point":
         // For point tool, immediately create the annotation
-        addAnnotation({
+        normalizeAndAdd({
           type: "point",
           points: [clickPoint],
           color: selectedColor,
@@ -1216,7 +1235,7 @@ const AnnotationCanvas = ({
           setIsDrawing(true);
         } else {
           // Complete the line
-          addAnnotation({
+          normalizeAndAdd({
             type: "line",
             points: [currentAnnotation[0], clickPoint],
             color: selectedColor,
@@ -1252,9 +1271,9 @@ const AnnotationCanvas = ({
           if (currentAnnotation.length >= 3 && distanceToFirst <= 15) {
             console.log(`✅ Closing ${selectedTool} polygon with ${currentAnnotation.length} points:`, currentAnnotation);
             // Close polygon
-            addAnnotation({
+            normalizeAndAdd({
               type: selectedTool,
-              points: [...currentAnnotation], // Create new array to avoid reference issues
+              points: [...currentAnnotation],
               color: selectedColor,
               selected: false,
             });
@@ -1271,8 +1290,8 @@ const AnnotationCanvas = ({
       default:
         console.log("Unhandled tool:", selectedTool);
     }
-  }, [selectedTool, imageScaling, annotations, selectedAnnotations, isShiftKeyDown, isSessionActive, 
-      currentAnnotation, isCreatingPolygon, isDrawing, selectedColor, addAnnotation, selectAnnotation, 
+  }, [selectedTool, imageScaling, canvasAnnotations, selectedAnnotations, isShiftKeyDown, isSessionActive, 
+      currentAnnotation, isCreatingPolygon, isDrawing, selectedColor, normalizeAndAdd, selectAnnotation, 
       deselectAll, recordInteractionEvent, handlePointerDownV2]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {

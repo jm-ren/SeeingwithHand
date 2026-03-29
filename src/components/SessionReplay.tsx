@@ -2,13 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Annotation, Group } from '../types/annotations';
 import EyeVisualization from './EyeVisualization';
 import Legend from './Legend';
-import { createCoordinateTransform } from '../lib/utils';
 import {
   sortAnnotationsByTime,
   computeReplayBaseTime,
   computeTotalDuration,
   getAnnotationsAtTime,
   drawProgressiveAnnotation,
+  imageToDisplay,
 } from '../lib/replayUtils';
 
 interface SessionReplayProps {
@@ -68,64 +68,42 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    const containerRect = containerRef.current?.getBoundingClientRect();
-    if (!containerRect) return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Use clientWidth/clientHeight (content box) — matches where the <img> renders
+    const contentWidth = container.clientWidth;
+    const contentHeight = container.clientHeight;
     
     // Calculate how the image is positioned within its container (object-fit: contain)
     const imageAspectRatio = image.naturalWidth / image.naturalHeight;
-    const containerAspectRatio = containerRect.width / containerRect.height;
+    const containerAspectRatio = contentWidth / contentHeight;
     
     let renderedImageWidth, renderedImageHeight, imageOffsetX, imageOffsetY;
     
     if (imageAspectRatio > containerAspectRatio) {
-      // Image is wider - constrained by container width
-      renderedImageWidth = containerRect.width;
-      renderedImageHeight = containerRect.width / imageAspectRatio;
+      renderedImageWidth = contentWidth;
+      renderedImageHeight = contentWidth / imageAspectRatio;
       imageOffsetX = 0;
-      imageOffsetY = (containerRect.height - renderedImageHeight) / 2;
+      imageOffsetY = (contentHeight - renderedImageHeight) / 2;
     } else {
-      // Image is taller - constrained by container height  
-      renderedImageWidth = containerRect.height * imageAspectRatio;
-      renderedImageHeight = containerRect.height;
-      imageOffsetX = (containerRect.width - renderedImageWidth) / 2;
+      renderedImageWidth = contentHeight * imageAspectRatio;
+      renderedImageHeight = contentHeight;
+      imageOffsetX = (contentWidth - renderedImageWidth) / 2;
       imageOffsetY = 0;
     }
 
-    // Recording dimensions and position (from debug output)
-    const recordingCanvasWidth = 1652;
-    const recordingCanvasHeight = 1095.13;
-    const recordingImageOffsetX = 0;
-    const recordingImageOffsetY = 128.43; // The image was offset during recording
-    
-    // Create coordinate transformer that converts from recording space to actual image space
-    const convertPoint = (point: { x: number; y: number }) => {
-      // First, convert from canvas coordinates to image coordinates during recording
-      const recordingImageX = point.x - recordingImageOffsetX;
-      const recordingImageY = point.y - recordingImageOffsetY;
-      
-      // Then scale from recording image size to current rendered image size
-      const scaleX = renderedImageWidth / recordingCanvasWidth;
-      const scaleY = renderedImageHeight / recordingCanvasHeight;
-      
-      // Finally, add the current image offset
-      return {
-        x: (recordingImageX * scaleX) + imageOffsetX,
-        y: (recordingImageY * scaleY) + imageOffsetY
-      };
+    // Annotations are stored in normalized [0,1] image-relative coordinates.
+    // Convert to current display coordinates using the rendered image rect.
+    const displayRect = {
+      x: imageOffsetX,
+      y: imageOffsetY,
+      width: renderedImageWidth,
+      height: renderedImageHeight,
     };
+    const convertPoint = (point: { x: number; y: number }) =>
+      imageToDisplay(point, displayRect);
 
-    // DEBUG: Log coordinate transformation details
-    console.log('🎯 SessionReplay Coordinate Transformation:', {
-      container: { width: containerRect.width, height: containerRect.height },
-      renderedImage: { width: renderedImageWidth, height: renderedImageHeight },
-      imageOffset: { x: imageOffsetX, y: imageOffsetY },
-      recordingCanvas: { width: recordingCanvasWidth, height: recordingCanvasHeight },
-      scales: { 
-        scaleX: (renderedImageWidth / recordingCanvasWidth).toFixed(4), 
-        scaleY: (renderedImageHeight / recordingCanvasHeight).toFixed(4) 
-      }
-    });
-    
     // Draw each annotation progressively
     currentAnnotations.forEach((annotation) => {
       const annotationStartTime = annotation.timestamp - replayBaseTime;
@@ -140,20 +118,10 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
     const container = containerRef.current;
     if (!canvas || !container) return;
 
-    const containerRect = container.getBoundingClientRect();
-    
-    // Set canvas dimensions to match container
-    canvas.width = containerRect.width;
-    canvas.height = containerRect.height;
-    
-    // Position canvas to overlay the image perfectly
-    canvas.style.position = 'absolute';
-    canvas.style.top = '0';
-    canvas.style.left = '0';
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    canvas.style.zIndex = '10';
-    canvas.style.pointerEvents = 'none';
+    // Use clientWidth/clientHeight (content box, excludes borders) to match
+    // the area where the <img> actually renders.
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
     
     drawProgressiveAnnotations();
   };
@@ -309,7 +277,8 @@ const SessionReplay: React.FC<SessionReplayProps> = ({
                 width: '100%',
                 height: 'auto',
                 maxHeight: '384px',
-                objectFit: 'contain'
+                objectFit: 'contain',
+                display: 'block'
               }}
             />
             {/* Progressive annotation canvas overlay */}

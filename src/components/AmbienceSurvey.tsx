@@ -5,8 +5,7 @@ import { Play, Pause, RotateCcw, FastForward } from 'lucide-react';
 import EyeVisualization from './EyeVisualization';
 import Legend from './Legend';
 import AdditionalContextFolder, { AdditionalContextItem } from './AdditionalContextFolder';
-import { createCoordinateTransform } from '../lib/utils';
-import { computeProgressivePolygonPath } from '../lib/replayUtils';
+import { computeProgressivePolygonPath, imageToDisplay } from '../lib/replayUtils';
 
 interface AmbienceSurveyProps {
   annotations: Annotation[];
@@ -348,48 +347,41 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
       return null;
     }
 
-    const containerRect = imageElement.parentElement?.getBoundingClientRect();
-    if (!containerRect) {
+    const container = imageElement.parentElement;
+    if (!container) {
       return null;
     }
 
-    // Calculate how the image is positioned within its container (object-fit: contain)
+    // Use clientWidth/clientHeight (content box) — excludes the img's border
+    const contentWidth = container.clientWidth;
+    const contentHeight = container.clientHeight;
+
     const imageAspectRatio = imageElement.naturalWidth / imageElement.naturalHeight;
-    const containerAspectRatio = containerRect.width / containerRect.height;
+    const containerAspectRatio = contentWidth / contentHeight;
     
     let renderedImageWidth, renderedImageHeight, imageOffsetX, imageOffsetY;
     
     if (imageAspectRatio > containerAspectRatio) {
-      // Image is wider - constrained by container width
-      renderedImageWidth = containerRect.width;
-      renderedImageHeight = containerRect.width / imageAspectRatio;
+      renderedImageWidth = contentWidth;
+      renderedImageHeight = contentWidth / imageAspectRatio;
       imageOffsetX = 0;
-      imageOffsetY = (containerRect.height - renderedImageHeight) / 2;
+      imageOffsetY = (contentHeight - renderedImageHeight) / 2;
     } else {
-      // Image is taller - constrained by container height  
-      renderedImageWidth = containerRect.height * imageAspectRatio;
-      renderedImageHeight = containerRect.height;
-      imageOffsetX = (containerRect.width - renderedImageWidth) / 2;
+      renderedImageWidth = contentHeight * imageAspectRatio;
+      renderedImageHeight = contentHeight;
+      imageOffsetX = (contentWidth - renderedImageWidth) / 2;
       imageOffsetY = 0;
     }
 
-    // Recording dimensions and position (from debug output)
-    const recordingCanvasWidth = 1652;
-    const recordingCanvasHeight = 1095.13;
-    const recordingImageOffsetX = 0;
-    const recordingImageOffsetY = 128.43; // The image was offset during recording
-    
-    // Convert a point from recording-space canvas coordinates to current SVG coordinates
-    const convertPoint = (point: { x: number; y: number }) => {
-      const recordingImageX = point.x - recordingImageOffsetX;
-      const recordingImageY = point.y - recordingImageOffsetY;
-      const scaleX = renderedImageWidth / recordingCanvasWidth;
-      const scaleY = renderedImageHeight / recordingCanvasHeight;
-      return {
-        x: (recordingImageX * scaleX) + imageOffsetX,
-        y: (recordingImageY * scaleY) + imageOffsetY
-      };
+    // Annotations are stored in normalized [0,1] image-relative coordinates.
+    const displayRect = {
+      x: imageOffsetX,
+      y: imageOffsetY,
+      width: renderedImageWidth,
+      height: renderedImageHeight,
     };
+    const convertPoint = (point: { x: number; y: number }) =>
+      imageToDisplay(point, displayRect);
 
     // Determine the elapsed session time to use for filtering
     const effectiveStartTime = sessionStartTime ?? (sortedAnnotations[0]?.timestamp ?? 0);
@@ -586,15 +578,15 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
                          {/* Inline Session Animation */}
              <div style={{ position: 'relative' }}>
                {/* Image with annotation overlay */}
-               <div style={{ position: 'relative', width: '500px', height: '375px', margin: '0 auto' }}>
+               <div style={{ position: 'relative', width: '500px', height: '375px', margin: '0 auto', border: '1px solid #CCCCCC' }}>
                  <img
                    src={imageUrl}
                    alt="Session"
                    style={{
-                     width: '100%',
-                     height: '100%',
-                     objectFit: 'cover',
-                     border: '1px solid #CCCCCC'
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    display: 'block'
                    }}
                  />
                  {/* Traces overlay */}

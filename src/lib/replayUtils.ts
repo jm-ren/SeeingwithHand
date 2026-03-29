@@ -1,5 +1,40 @@
 import { Annotation, Point } from "../types/annotations";
 
+interface ImageRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Converts a canvas-space point to normalized [0,1] image-relative coordinates.
+ * Used at recording time to store resolution-independent positions.
+ */
+export function normalizeToImage(
+  canvasPoint: Point,
+  imageRect: ImageRect
+): Point {
+  return {
+    x: (canvasPoint.x - imageRect.x) / imageRect.width,
+    y: (canvasPoint.y - imageRect.y) / imageRect.height,
+  };
+}
+
+/**
+ * Converts a normalized [0,1] image-relative point to display coordinates.
+ * Used at playback time to position annotations on the rendered image.
+ */
+export function imageToDisplay(
+  normalizedPoint: Point,
+  displayRect: ImageRect
+): Point {
+  return {
+    x: normalizedPoint.x * displayRect.width + displayRect.x,
+    y: normalizedPoint.y * displayRect.height + displayRect.y,
+  };
+}
+
 /**
  * Returns a new array of annotations sorted ascending by timestamp.
  */
