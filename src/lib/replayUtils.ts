@@ -1,6 +1,6 @@
 import { Annotation, Point } from "../types/annotations";
 
-interface ImageRect {
+export interface ImageRect {
   x: number;
   y: number;
   width: number;

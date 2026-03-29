@@ -97,9 +97,9 @@ Extracted pure functions live in `src/lib/replayUtils.ts`:
 
 | File | Exports |
 |------|---------|
-| `src/lib/utils.ts` | `cn`, `formatTimeGap`, `formatCoordinates`, `formatFreehandTrace`, `processTracesForDisplay`, `generateId`, `debounce`, `calculateImageScaling`, `imagePointToDisplay`, `displayPointToImage`, `createCoordinateTransform` |
+| `src/lib/utils.ts` | `cn`, `formatTimeGap`, `formatCoordinates`, `formatFreehandTrace`, `processTracesForDisplay`, `generateId`, `debounce`, `calculateImageScaling`, `imagePointToDisplay`, `displayPointToImage` |
 | `src/lib/imageProcessing.ts` | `createVisualization`, `drawAnnotations` |
-| `src/lib/replayUtils.ts` | `sortAnnotationsByTime`, `computeReplayBaseTime`, `computeTotalDuration`, `getAnnotationsAtTime` |
+| `src/lib/replayUtils.ts` | `sortAnnotationsByTime`, `computeReplayBaseTime`, `computeTotalDuration`, `getAnnotationsAtTime`, `normalizeToImage`, `imageToDisplay`, `ImageRect` |
 | `src/lib/supabase.ts` | Supabase client singleton |
 | `src/lib/svgExporter.ts` | SVG export utilities |
 | `src/lib/cn.ts` | Class name helper (re-export) |
@@ -160,4 +160,4 @@ pnpm test:e2e --update-snapshots
 ## What's Planned (Not Done)
 
 - **Canvas refactor:** `AnnotationCanvas.tsx` is monolithic and a good candidate for a clean refactor into a renderer/input-handler split. This should be done as a separate, intentional effort with tests in place.
-- **CO-23 fix:** The replay ordering logic is now extracted and tested in `replayUtils.ts`. The next step is to fix the coordinate transform bug in `SessionReplay.tsx` (hardcoded recording dimensions on lines 93–96) using the existing `createCoordinateTransform` utility.
+- **CO-26 done:** Annotation coordinates are now stored in normalized [0,1] image-relative space. Playback uses `imageToDisplay` to map back to the current rendered size. Hardcoded recording dimensions have been removed.

@@ -246,30 +246,3 @@ export function displayPointToImage(point: Point, scaling: ImageScaling): Point 
     y: (point.y - scaling.offsetY) / scaling.scaleY
   };
 }
-
-/**
- * Creates a coordinate transformation function for converting annotation points during playback
- * @param originalImageWidth Width of image when annotations were recorded
- * @param originalImageHeight Height of image when annotations were recorded
- * @param currentContainerWidth Current display container width
- * @param currentContainerHeight Current display container height
- * @param maxHeight Optional maximum height constraint
- * @returns Function to transform points from original to current coordinates
- */
-export function createCoordinateTransform(
-  originalImageWidth: number,
-  originalImageHeight: number,
-  currentContainerWidth: number,
-  currentContainerHeight: number,
-  maxHeight?: number
-) {
-  const scaling = calculateImageScaling(
-    originalImageWidth,
-    originalImageHeight,
-    currentContainerWidth,
-    currentContainerHeight,
-    maxHeight
-  );
-
-  return (point: Point): Point => imagePointToDisplay(point, scaling);
-}

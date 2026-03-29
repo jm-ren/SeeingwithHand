@@ -5,7 +5,6 @@ import {
   calculateImageScaling,
   imagePointToDisplay,
   displayPointToImage,
-  createCoordinateTransform,
 } from "../lib/utils";
 import { Point } from "../types/annotations";
 
@@ -161,21 +160,3 @@ describe("displayPointToImage", () => {
   });
 });
 
-describe("createCoordinateTransform", () => {
-  it("returns a function that transforms points correctly", () => {
-    // 400x300 original image displayed in a 200x150 container (same aspect ratio, scale 0.5)
-    const transform = createCoordinateTransform(400, 300, 200, 150);
-    const result = transform({ x: 100, y: 100 });
-    expect(result.x).toBeCloseTo(50, 5);
-    expect(result.y).toBeCloseTo(50, 5);
-  });
-
-  it("handles letterboxing with offsetY", () => {
-    // Wide image (400x100) in a square container (200x200)
-    // displayWidth=200, displayHeight=50, offsetY=75
-    const transform = createCoordinateTransform(400, 100, 200, 200);
-    const result = transform({ x: 200, y: 50 });
-    expect(result.x).toBeCloseTo(100, 5); // 200 * 0.5 + 0
-    expect(result.y).toBeCloseTo(100, 5); // 50 * 0.5 + 75
-  });
-});

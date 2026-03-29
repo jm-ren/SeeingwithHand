@@ -3,19 +3,9 @@ import {
   normalizeToImage,
   imageToDisplay,
   drawProgressiveAnnotation,
+  ImageRect,
 } from "../lib/replayUtils";
 import { Point } from "../types/annotations";
-
-/**
- * Image scaling describes how an image is positioned within a canvas/container.
- * x, y = top-left offset (letterbox padding), width/height = drawn image size.
- */
-interface ImageRect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
 
 // ─── normalizeToImage ─────────────────────────────────────────────────────────
 // Converts a canvas-space point to normalized [0,1] image-relative coordinates.
