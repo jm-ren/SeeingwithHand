@@ -405,7 +405,45 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
       a => (a.timestamp - effectiveStartTime) <= elapsedMs
     );
 
+    // Groups become visible at the moment they were created (group.timestamp)
+    const visibleGroups = groups.filter(
+      g => (g.timestamp - effectiveStartTime) <= elapsedMs
+    );
+
+    const groupRects = visibleGroups.flatMap((group) => {
+      const memberAnnotations = visibleAnnotations.filter(
+        a => a.groupIds?.includes(group.id)
+      );
+      if (memberAnnotations.length === 0) return [];
+
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      memberAnnotations.forEach((annotation) => {
+        annotation.points.forEach((point) => {
+          const converted = convertPoint(point);
+          minX = Math.min(minX, converted.x);
+          minY = Math.min(minY, converted.y);
+          maxX = Math.max(maxX, converted.x);
+          maxY = Math.max(maxY, converted.y);
+        });
+      });
+
+      const padding = 10;
+      return [
+        <rect
+          key={`group-${group.id}`}
+          x={minX - padding}
+          y={minY - padding}
+          width={maxX - minX + padding * 2}
+          height={maxY - minY + padding * 2}
+          fill="rgba(200, 200, 255, 0.2)"
+          stroke="rgba(100, 100, 255, 0.5)"
+          strokeWidth="1.5"
+        />
+      ];
+    });
+
     return [
+      ...groupRects,
       ...visibleAnnotations.map((annotation) => {
         if (annotation.type === 'freehand' && annotation.points && annotation.points.length > 1) {
           const pathData = annotation.points.map((point, i) => {
