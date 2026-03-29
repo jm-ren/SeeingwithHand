@@ -20,14 +20,14 @@ const SessionPage: React.FC = () => {
 const SessionPageContent: React.FC<{ imageId?: string; sessionId?: string }> = ({ imageId, sessionId }) => {
   const [showSurvey, setShowSurvey] = useState(false);
   const [surveyData, setSurveyData] = useState<any>(null);
-  const [sessionSummary, setSessionSummary] = useState<{ sessionName: string; imageUrl: string; audioUrl?: string; audioBlob?: Blob } | null>(null);
+  const [sessionSummary, setSessionSummary] = useState<{ sessionName: string; imageUrl: string; audioUrl?: string; audioBlob?: Blob; audioStartedAt?: number } | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showReplay, setShowReplay] = useState(false);
   const { annotations, groups, sessionId: sessionIdFromContext, sessionStartTime, endSession } = useApplication();
   const navigate = useNavigate();
 
   // Handler to trigger survey after session ends
-  const handleSessionEnd = (summary: { sessionName: string; imageUrl: string; audioUrl?: string; audioBlob?: Blob }) => {
+  const handleSessionEnd = (summary: { sessionName: string; imageUrl: string; audioUrl?: string; audioBlob?: Blob; audioStartedAt?: number }) => {
     // End the session to stop canvas recording
     endSession();
     setSessionSummary(summary);
@@ -95,6 +95,7 @@ const SessionPageContent: React.FC<{ imageId?: string; sessionId?: string }> = (
         annotations,
         groups,
         audio_url: audioUrl,
+        audio_started_at: sessionSummary?.audioStartedAt,
         survey_data: {
           ...data,
           additionalContext: processedContextItems
@@ -142,6 +143,7 @@ const SessionPageContent: React.FC<{ imageId?: string; sessionId?: string }> = (
           imageUrl={sessionSummary.imageUrl}
           audioUrl={sessionSummary.audioUrl}
           audioBlob={sessionSummary.audioBlob}
+          audioStartedAt={sessionSummary.audioStartedAt}
           sessionStartTime={sessionStartTime ?? undefined}
           onSubmit={handleSurveySubmit}
           onClose={() => setShowSurvey(false)}

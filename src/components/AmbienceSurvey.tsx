@@ -14,6 +14,7 @@ interface AmbienceSurveyProps {
   imageUrl: string;
   audioUrl?: string;
   audioBlob?: Blob;
+  audioStartedAt?: number;
   sessionStartTime?: number;
   onSubmit: (data: any) => void;
   onClose: () => void;
@@ -27,6 +28,7 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
   imageUrl, 
   audioUrl, 
   audioBlob,
+  audioStartedAt,
   sessionStartTime,
   onSubmit, 
   onClose,
@@ -322,18 +324,15 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
   };
 
   const handleSpeedToggle = () => {
-    // For audio playback, we can implement playback rate control
+    const speeds = [1, 2, 4];
+    const nextIndex = (speeds.indexOf(playbackRate) + 1) % speeds.length;
+    const newRate = speeds[nextIndex];
+
     const audio = audioRef.current;
     if (audio && effectiveAudioUrl) {
-      const currentRate = audio.playbackRate;
-      const newRate = currentRate >= 2 ? 1 : currentRate + 0.5;
       audio.playbackRate = newRate;
-      setPlaybackRate(newRate);
-    } else {
-      // Fallback for when there's no audio - just cycle through visual rates
-      const newRate = playbackRate >= 2 ? 1 : playbackRate + 0.5;
-      setPlaybackRate(newRate);
     }
+    setPlaybackRate(newRate);
   };
 
   // Progressive annotation rendering
@@ -390,10 +389,15 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
 
     const isValidAudioDuration = effectiveAudioUrl && duration > 0 && duration !== Infinity && !isNaN(duration);
 
-    // When audio is playing, use audio currentTime directly (in ms) as elapsed time.
+    // Offset between when sessionStartTime was set and when audio actually began recording.
+    // Audio position 0 corresponds to audioStartedAt, not sessionStartTime.
+    const audioOffsetMs = (audioStartedAt ?? effectiveStartTime) - effectiveStartTime;
+
+    // When audio is playing, use audio currentTime (in ms) plus the offset so traces
+    // align with what the user was actually seeing/doing at that moment in the recording.
     // When no audio, derive elapsed time proportionally from animationProgress.
     const elapsedMs = isValidAudioDuration
-      ? currentTime * 1000
+      ? (currentTime * 1000) + audioOffsetMs
       : (animationProgress / 100) * totalSessionDurationMs;
 
     // Show only strokes that had been drawn by the elapsed point in the session

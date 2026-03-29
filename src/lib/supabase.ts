@@ -12,6 +12,7 @@ export interface SessionData {
   annotations: any[];
   groups: any[];
   audio_url?: string;
+  audio_started_at?: number;
   survey_data?: any;
   created_at?: string;
   updated_at?: string;
@@ -89,6 +90,7 @@ export async function saveSession(sessionData: Omit<SessionData, 'id' | 'created
         annotations: sessionData.annotations,
         groups: sessionData.groups,
         audio_url: sessionData.audio_url,
+        audio_started_at: sessionData.audio_started_at,
         survey_data: sessionData.survey_data,
       })
       .select()

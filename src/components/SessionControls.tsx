@@ -29,7 +29,7 @@ interface SessionControlsProps {
   disabled?: boolean;
   countdown?: number;
   showCountdown?: boolean;
-  onSessionEnd?: (summary: { sessionName: string; imageUrl: string; audioUrl?: string; audioBlob?: Blob }) => void;
+  onSessionEnd?: (summary: { sessionName: string; imageUrl: string; audioUrl?: string; audioBlob?: Blob; audioStartedAt?: number }) => void;
   sessionName?: string;
   imageUrl?: string;
   audioRecorder?: ReturnType<typeof useAudioRecorder>;
@@ -80,6 +80,7 @@ const SessionControls = ({
               imageUrl,
               audioUrl: audioResult.audioUrl || undefined,
               audioBlob: audioResult.audioBlob || undefined,
+              audioStartedAt: audio.audioStartedAt ?? undefined,
             };
             onSessionEnd(summary);
           } else {

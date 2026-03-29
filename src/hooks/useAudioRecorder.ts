@@ -7,6 +7,7 @@ export function useAudioRecorder() {
   const [isPaused, setIsPaused] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioStartedAt, setAudioStartedAt] = useState<number | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
   const start = useCallback(async () => {
@@ -15,6 +16,7 @@ export function useAudioRecorder() {
     console.log('[AudioRecorder] Starting audio recording...');
     setAudioUrl(null);
     setAudioBlob(null);
+    setAudioStartedAt(null);
     chunksRef.current = [];
     
     try {
@@ -60,7 +62,9 @@ export function useAudioRecorder() {
       };
       
       mediaRecorder.start();
-      console.log('[AudioRecorder] Recording started successfully');
+      const startedAt = Date.now();
+      setAudioStartedAt(startedAt);
+      console.log('[AudioRecorder] Recording started successfully at', startedAt);
       setIsRecording(true);
       setIsPaused(false);
     } catch (err: any) {
@@ -142,6 +146,7 @@ export function useAudioRecorder() {
     isPaused,
     audioUrl,
     audioBlob,
+    audioStartedAt,
     start,
     pause,
     resume,

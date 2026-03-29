@@ -39,7 +39,7 @@ const imageMap: Record<string, string> = {
 interface HomeProps {
   imageId?: string;
   sessionId?: string;
-  onSessionEnd?: (summary: { sessionName: string; imageUrl: string; audioUrl?: string; audioBlob?: Blob }) => void;
+  onSessionEnd?: (summary: { sessionName: string; imageUrl: string; audioUrl?: string; audioBlob?: Blob; audioStartedAt?: number }) => void;
 }
 
 const sessionNameCounter: Record<string, number> = {};
