@@ -514,16 +514,24 @@ const ContextCard: React.FC<{ item: AdditionalContextItem }> = ({ item }) => {
       backgroundColor: '#FFFFFF',
       fontFamily: 'Azeret Mono, monospace',
       fontSize: '11px',
-      minHeight: 80,
+      aspectRatio: '1 / 1',
       display: 'flex',
       flexDirection: 'column',
       gap: 8,
+      overflow: 'hidden',
+      boxSizing: 'border-box',
     }}>
-      <div style={{ fontSize: '10px', color: '#666666' }}>
+      <div style={{ fontSize: '10px', color: '#666666', flexShrink: 0 }}>
         {item.type === 'note' ? 'Note' : fileTypeLabel(item.fileType)}
       </div>
       {item.type === 'note' ? (
-        <div style={{ lineHeight: '1.4', color: '#333333', wordBreak: 'break-word' }}>
+        <div style={{
+          lineHeight: '1.4',
+          color: '#333333',
+          wordBreak: 'break-word',
+          overflow: 'hidden',
+          flex: 1,
+        }}>
           {item.content}
         </div>
       ) : item.fileUrl && item.fileType?.startsWith('image/') ? (
@@ -532,9 +540,10 @@ const ContextCard: React.FC<{ item: AdditionalContextItem }> = ({ item }) => {
           alt={item.filename}
           style={{
             width: '100%',
-            maxHeight: 100,
+            flex: 1,
             objectFit: 'cover',
             border: '1px solid #CCCCCC',
+            minHeight: 0,
           }}
         />
       ) : (

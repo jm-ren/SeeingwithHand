@@ -41,24 +41,36 @@ const AdditionalContextFolder: React.FC<AdditionalContextFolderProps> = ({
     }
   };
 
+  const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      const fileUrl = URL.createObjectURL(file);
+    if (!file) return;
+
+    if (file.size > MAX_FILE_SIZE) {
+      alert(`File is too large (${formatFileSize(file.size)}). Please choose a file under 2 MB.`);
+      event.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
       const newFile: AdditionalContextItem = {
         id: `file-${Date.now()}`,
         type: 'file',
         content: file.name,
         filename: file.name,
-        fileUrl: fileUrl,
+        fileUrl: dataUrl,
         fileType: file.type,
         fileSize: file.size,
         timestamp: Date.now()
       };
       onAddItem(newFile);
       setShowAddOptions(false);
-    }
-    // Clear the input
+    };
+    reader.readAsDataURL(file);
+
     event.target.value = '';
   };
 
