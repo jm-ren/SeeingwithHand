@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { SessionData } from '../lib/supabase';
+import SessionComments from './SessionComments';
 import {
   sortAnnotationsByTime,
   computeReplayBaseTime,
@@ -443,6 +444,9 @@ const SessionViewer: React.FC<SessionViewerProps> = ({ session, imageUrl, imageT
           </div>
         </div>
       )}
+
+      {/* Comments */}
+      <SessionComments sessionId={session.session_id} />
     </div>
   );
 };
