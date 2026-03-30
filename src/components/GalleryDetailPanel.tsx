@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import SessionViewer from './SessionViewer';
 
 interface GalleryDetailPanelProps {
   hovered?: { image: any; session?: any } | null;
@@ -104,6 +105,19 @@ const GalleryDetailPanel: React.FC<GalleryDetailPanelProps> = ({ hovered, select
 
   const session = display.session;
 
+  if (session) {
+    return (
+      <div style={panelStyle}>
+        <SessionViewer
+          key={session.id}
+          session={session}
+          imageUrl={display.image.thumbnail}
+          imageTitle={display.image.title}
+        />
+      </div>
+    );
+  }
+
   return (
     <div style={panelStyle}>
       <div className="gallery-title-main">
@@ -118,41 +132,19 @@ const GalleryDetailPanel: React.FC<GalleryDetailPanelProps> = ({ hovered, select
           alt={display.image.title}
         />
       </div>
-
-      {session ? (
-        <div style={{ marginBottom: 16 }}>
-          <div className="gallery-title-sub">
-            {session.session_name || session.name}
+      <div>
+        {display.image.caption && (
+          <div className="gallery-text-secondary" style={{ marginBottom: 16 }}>
+            {display.image.caption}
           </div>
-          <div className="gallery-text-small" style={{ color: '#666666', marginTop: 4 }}>
-            by {session.nickname || 'anonymous'}
-          </div>
-          {session.created_at && (
-            <div className="gallery-text-small" style={{ color: '#666666', marginTop: 4 }}>
-              {formatDate(session.created_at)}
-            </div>
-          )}
-          {session.duration_ms > 0 && (
-            <div className="gallery-text-small" style={{ color: '#666666', marginTop: 4 }}>
-              Duration: {formatDuration(session.duration_ms)}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div>
-          {display.image.caption && (
-            <div className="gallery-text-secondary" style={{ marginBottom: 16 }}>
-              {display.image.caption}
-            </div>
-          )}
-          <button
-            className="gallery-button gallery-button-text"
-            onClick={() => setShowPrepare(true)}
-          >
-            start seeing session
-          </button>
-        </div>
-      )}
+        )}
+        <button
+          className="gallery-button gallery-button-text"
+          onClick={() => setShowPrepare(true)}
+        >
+          start seeing session
+        </button>
+      </div>
     </div>
   );
 };
