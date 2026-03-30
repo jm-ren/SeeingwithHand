@@ -123,3 +123,174 @@
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ── Shared typography system ── */
+/* Used by SessionViewer and any page outside GalleryLayout */
+
+.gallery-title-main {
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 400;
+  color: #333333;
+  letter-spacing: -0.5px;
+  margin-bottom: 16px;
+  font-size: clamp(13px, 2.0vw, 15px);
+  line-height: 1.0;
+}
+
+.gallery-title-section {
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 400;
+  color: #333333;
+  letter-spacing: 0.0px;
+  margin-bottom: 8px;
+  font-size: clamp(12px, 1.0vw, 14px);
+  line-height: 1.0;
+}
+
+.gallery-title-sub {
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 400;
+  color: #333333;
+  letter-spacing: -0.3px;
+  font-size: clamp(11px, 1.4vw, 13px);
+  line-height: 1.0;
+}
+
+.gallery-text-body {
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 400;
+  color: #333333;
+  letter-spacing: -0.2px;
+  font-size: clamp(9px, 1.1vw, 11px);
+  line-height: 1.2;
+}
+
+.gallery-text-secondary {
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 400;
+  color: #666666;
+  letter-spacing: 0.2px;
+  font-size: clamp(9px, 1.1vw, 11px);
+  line-height: 1.6;
+}
+
+.gallery-text-small {
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 400;
+  color: #333333;
+  letter-spacing: 0.3px;
+  font-size: clamp(8px, 1.0vw, 10px);
+  line-height: 1.4;
+}
+
+.gallery-button-text {
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 500;
+  color: #FFFFFF;
+  letter-spacing: 0.5px;
+  font-size: clamp(9px, 1.1vw, 11px);
+  line-height: 1;
+}
+
+.gallery-button-text-large {
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 500;
+  color: #FFFFFF;
+  letter-spacing: 0.5px;
+  font-size: clamp(8px, 1.1vw, 10px);
+  line-height: 1.5;
+}
+
+.gallery-text-placeholder {
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 400;
+  color: #666666;
+  letter-spacing: 0.5px;
+  font-style: italic;
+  font-size: clamp(9px, 1.1vw, 11px);
+  line-height: 1.4;
+}
+
+.gallery-button {
+  padding: 12px 24px;
+  background: #666666;
+  color: #FFFFFF;
+  border: 1px solid #666666;
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.gallery-button:hover {
+  background: #333333;
+}
+
+.gallery-button-large {
+  padding: 12px 32px;
+}
+
+.gallery-image-container {
+  width: 100%;
+  background: #FFFFFF;
+  border: 1px solid #CCCCCC;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+
+.gallery-image-container img {
+  width: 100%;
+  height: auto;
+  max-height: 400px;
+  object-fit: contain;
+  display: block;
+  border: none;
+}
+
+.gallery-spacing-sm { margin-bottom: 8px; }
+.gallery-spacing-md { margin-bottom: 16px; }
+.gallery-spacing-lg { margin-bottom: 24px; }
+.gallery-spacing-xl { margin-bottom: 32px; }
+
+@media screen and (max-width: 767px) {
+  .gallery-title-main  { margin-bottom: 12px; font-size: 15px; }
+  .gallery-title-section { margin-bottom: 10px; font-size: 13px; }
+  .gallery-title-sub   { font-size: 12px; }
+  .gallery-text-body   { font-size: 10px; line-height: 1.6; }
+  .gallery-text-secondary { font-size: 10px; line-height: 1.7; }
+  .gallery-text-small  { font-size: 9px; }
+  .gallery-button-text { font-size: 10px; }
+  .gallery-button-text-large { font-size: 12px; }
+  .gallery-image-container { max-height: 300px; }
+  .gallery-image-container img { max-height: 300px; }
+  .gallery-button { padding: 10px 20px; width: 100%; text-align: center; }
+  .gallery-button-large { padding: 12px 24px; width: 100%; }
+  .gallery-spacing-sm { margin-bottom: 6px; }
+  .gallery-spacing-md { margin-bottom: 12px; }
+  .gallery-spacing-lg { margin-bottom: 18px; }
+  .gallery-spacing-xl { margin-bottom: 24px; }
+}
+
+@media screen and (max-width: 480px) {
+  .gallery-title-main  { font-size: 14px; margin-bottom: 10px; }
+  .gallery-title-section { font-size: 12px; margin-bottom: 8px; }
+  .gallery-title-sub   { font-size: 11px; }
+  .gallery-text-body   { font-size: 9px; line-height: 1.7; }
+  .gallery-text-secondary { font-size: 9px; line-height: 1.8; }
+  .gallery-text-small  { font-size: 8px; }
+  .gallery-button-text { font-size: 9px; }
+  .gallery-button-text-large { font-size: 11px; }
+  .gallery-image-container { max-height: 250px; }
+  .gallery-image-container img { max-height: 250px; }
+  .gallery-button { padding: 8px 16px; font-size: 9px; }
+  .gallery-button-large { padding: 10px 20px; font-size: 11px; }
+  .gallery-spacing-sm { margin-bottom: 4px; }
+  .gallery-spacing-md { margin-bottom: 8px; }
+  .gallery-spacing-lg { margin-bottom: 12px; }
+  .gallery-spacing-xl { margin-bottom: 16px; }
+}
