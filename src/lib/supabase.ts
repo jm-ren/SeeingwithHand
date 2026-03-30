@@ -207,6 +207,56 @@ export async function deleteSession(sessionId: string): Promise<boolean> {
   }
 }
 
+export async function getSessionBySlug(slug: string): Promise<SessionData | null> {
+  if (!supabase) {
+    return readStorage().find(s => s.share_slug === slug) || null;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('sessions')
+      .select('*')
+      .eq('share_slug', slug)
+      .single();
+
+    if (error) {
+      console.error('Error fetching session by slug:', error);
+      return null;
+    }
+    return data;
+  } catch (error) {
+    console.error('Error fetching session by slug:', error);
+    return null;
+  }
+}
+
+export async function updateSession(sessionId: string, patch: Partial<SessionData>): Promise<boolean> {
+  if (!supabase) {
+    const sessions = readStorage();
+    const index = sessions.findIndex(s => s.session_id === sessionId);
+    if (index === -1) return false;
+    sessions[index] = { ...sessions[index], ...patch, updated_at: new Date().toISOString() };
+    writeStorage(sessions);
+    return true;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('sessions')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('session_id', sessionId);
+
+    if (error) {
+      console.error('Error updating session:', error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('Error updating session:', error);
+    return false;
+  }
+}
+
 // === File uploads (mock in localStorage mode) === //
 
 export async function uploadAudioFile(audioBlob: Blob, fileName: string): Promise<string | null> {

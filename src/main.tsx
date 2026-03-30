@@ -4,6 +4,7 @@ import "./index.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import GalleryPage from "./GalleryPage";
 import SessionPage from "./SessionPage";
+import SharedSessionPage from "./SharedSessionPage";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 const basename = import.meta.env.BASE_URL;
@@ -26,6 +27,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/session/:imageId/:sessionId" element={
             <ErrorBoundary context="Session Page">
               <SessionPage />
+            </ErrorBoundary>
+          } />
+          <Route path="/view/:shareSlug" element={
+            <ErrorBoundary context="Shared Session Page">
+              <SharedSessionPage />
             </ErrorBoundary>
           } />
         </Routes>

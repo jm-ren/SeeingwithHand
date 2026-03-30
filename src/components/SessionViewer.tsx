@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { SessionData } from '../lib/supabase';
+import { SessionData, updateSession } from '../lib/supabase';
 import SessionComments from './SessionComments';
 import {
   sortAnnotationsByTime,
@@ -16,6 +16,7 @@ interface SessionViewerProps {
   session: SessionData;
   imageUrl: string;
   imageTitle: string;
+  showComments?: boolean;
 }
 
 const WEATHER_ICONS: Record<string, string> = {
@@ -63,10 +64,17 @@ const CONTROL_BUTTON_STYLE: React.CSSProperties = {
   letterSpacing: '0.5px',
 };
 
-const SessionViewer: React.FC<SessionViewerProps> = ({ session, imageUrl, imageTitle }) => {
+function generateShareSlug(): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+const SessionViewer: React.FC<SessionViewerProps> = ({ session, imageUrl, imageTitle, showComments = true }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(4);
+  const [shareSlug, setShareSlug] = useState<string | null>(session.share_slug);
+  const [copied, setCopied] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -246,6 +254,24 @@ const SessionViewer: React.FC<SessionViewerProps> = ({ session, imageUrl, imageT
     setPlaybackSpeed(speeds[nextIndex]);
   };
 
+  const handleShare = async () => {
+    let slug = shareSlug;
+    if (!slug) {
+      slug = generateShareSlug();
+      setShareSlug(slug);
+      await updateSession(session.session_id, { share_slug: slug });
+    }
+    const url = `${window.location.origin}/view/${slug}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback: prompt the user with the URL
+      window.prompt('Copy this link:', url);
+    }
+  };
+
   const progress = totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0;
   const curSec = Math.floor(currentTime / 1000);
   const curMin = Math.floor(curSec / 60);
@@ -261,16 +287,28 @@ const SessionViewer: React.FC<SessionViewerProps> = ({ session, imageUrl, imageT
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Header */}
-      <div>
-        <div className="gallery-title-main">{imageTitle}</div>
-        <div className="gallery-title-sub" style={{ marginBottom: 4 }}>
-          {session.session_name}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div className="gallery-title-main">{imageTitle}</div>
+          <div className="gallery-title-sub" style={{ marginBottom: 4 }}>
+            {session.session_name}
+          </div>
+          <div className="gallery-text-small" style={{ color: '#666666' }}>
+            by {session.nickname || 'anonymous'}
+            {session.created_at && ` · ${formatViewerDate(session.created_at)}`}
+            {session.duration_ms > 0 && ` · ${formatViewerDuration(session.duration_ms)}`}
+          </div>
         </div>
-        <div className="gallery-text-small" style={{ color: '#666666' }}>
-          by {session.nickname || 'anonymous'}
-          {session.created_at && ` · ${formatViewerDate(session.created_at)}`}
-          {session.duration_ms > 0 && ` · ${formatViewerDuration(session.duration_ms)}`}
-        </div>
+        <button onClick={handleShare} style={{ ...CONTROL_BUTTON_STYLE, flexShrink: 0 }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="18" cy="5" r="3" />
+            <circle cx="6" cy="12" r="3" />
+            <circle cx="18" cy="19" r="3" />
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+          </svg>
+          {copied ? 'Copied!' : 'Share'}
+        </button>
       </div>
 
       {/* Replay area: image with canvas overlay */}
@@ -446,7 +484,7 @@ const SessionViewer: React.FC<SessionViewerProps> = ({ session, imageUrl, imageT
       )}
 
       {/* Comments */}
-      <SessionComments sessionId={session.session_id} />
+      {showComments && <SessionComments sessionId={session.session_id} />}
     </div>
   );
 };
