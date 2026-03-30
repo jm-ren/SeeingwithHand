@@ -1,9 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 interface GalleryDetailPanelProps {
   hovered?: { image: any; session?: any } | null;
   selected?: { image: any; session?: any } | null;
+}
+
+const panelStyle: React.CSSProperties = {
+  flex: '1 1 50%',
+  maxWidth: '1032px',
+  minWidth: '400px',
+  padding: 36,
+  background: '#FBFAF8',
+  height: '100%',
+  overflowY: 'auto',
+};
+
+function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const rem = seconds % 60;
+  if (minutes > 0) return `${minutes}m ${rem}s`;
+  return `${seconds}s`;
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 const PrepareSessionPanel: React.FC<{ image: any; onStart: () => void }> = ({ image, onStart }) => (
@@ -18,15 +44,13 @@ const PrepareSessionPanel: React.FC<{ image: any; onStart: () => void }> = ({ im
       <div className="gallery-title-sub">
         {image.title}
       </div>
-      <div 
+      <div
         className="gallery-image-container"
-        style={{ 
-          margin: '16px 0' 
-        }}
+        style={{ margin: '16px 0' }}
       >
-        <img 
-          src={image.thumbnail} 
-          alt={image.title} 
+        <img
+          src={image.thumbnail}
+          alt={image.title}
         />
       </div>
       <p className="gallery-text-secondary" style={{ marginBottom: 0 }}>
@@ -45,22 +69,20 @@ const PrepareSessionPanel: React.FC<{ image: any; onStart: () => void }> = ({ im
 );
 
 const GalleryDetailPanel: React.FC<GalleryDetailPanelProps> = ({ hovered, selected }) => {
-  const [inSession, setInSession] = useState(false);
+  const [showPrepare, setShowPrepare] = useState(false);
   const navigate = useNavigate();
-  // If a selection is locked, show selected; otherwise show hovered
+
   const display = selected || hovered;
+
+  const selectedImageId = selected?.image?.id;
+  const selectedSessionId = selected?.session?.id;
+  useEffect(() => {
+    setShowPrepare(false);
+  }, [selectedImageId, selectedSessionId]);
 
   if (!display || !display.image) {
     return (
-      <div style={{ 
-        flex: '1 1 50%', 
-        maxWidth: '1032px',
-        minWidth: '400px',
-        padding: 36, 
-        background: '#FBFAF8', 
-        height: '100%', 
-        overflowY: 'auto'
-      }}>
+      <div style={panelStyle}>
         <div className="gallery-text-placeholder">
           Hover over an image or session to see details here.
         </div>
@@ -68,91 +90,71 @@ const GalleryDetailPanel: React.FC<GalleryDetailPanelProps> = ({ hovered, select
     );
   }
 
-  // If 'start session' is selected, show prepare page
-  if (display.session && display.session.id === 'new' && !inSession) {
+  if (showPrepare) {
     const handleStart = () => {
-      // Generate a mock sessionId (in real app, generate properly)
       const sessionId = `sess${Math.floor(Math.random() * 100000)}`;
       navigate(`/session/${display.image.id}/${sessionId}`);
     };
     return (
-      <div style={{ 
-        flex: '1 1 50%', 
-        maxWidth: '1032px',
-        minWidth: '400px',
-        padding: 36, 
-        background: '#FBFAF8', 
-        height: '100%', 
-        overflowY: 'auto' 
-      }}>
+      <div style={panelStyle}>
         <PrepareSessionPanel image={display.image} onStart={handleStart} />
       </div>
     );
   }
 
-  // If in session, show placeholder for drawing tool
-  if (inSession) {
-    return (
-      <div style={{ 
-        flex: '1 1 50%', 
-        maxWidth: '1032px',
-        minWidth: '400px',
-        padding: 36, 
-        background: '#FBFAF8', 
-        height: '100%', 
-        overflowY: 'auto' 
-      }}>
-        <div className="gallery-title-section">
-          Drawing/Recording Tool (placeholder)
-        </div>
-        <p className="gallery-text-body">
-          Here you will draw and record audio for your session.
-        </p>
-      </div>
-    );
-  }
+  const session = display.session;
 
   return (
-    <div style={{ 
-      flex: '1 1 50%', 
-      maxWidth: '1032px',
-      minWidth: '400px',
-      padding: 36, 
-      background: '#FBFAF8', 
-      height: '100%', 
-      overflowY: 'auto' 
-    }}>
+    <div style={panelStyle}>
       <div className="gallery-title-main">
         {display.image.title}
       </div>
-      <div 
+      <div
         className="gallery-image-container"
-        style={{ 
-          marginBottom: 24 
-        }}
+        style={{ marginBottom: 24 }}
       >
         <img
           src={display.image.thumbnail}
           alt={display.image.title}
         />
       </div>
-      {display.session ? (
+
+      {session ? (
         <div style={{ marginBottom: 16 }}>
           <div className="gallery-title-sub">
-            {display.session.session_name || display.session.name}
+            {session.session_name || session.name}
           </div>
-          <div className="gallery-text-small" style={{ color: '#666666' }}>
-            by {display.session.nickname || display.session.user || 'anonymous'}
+          <div className="gallery-text-small" style={{ color: '#666666', marginTop: 4 }}>
+            by {session.nickname || 'anonymous'}
           </div>
+          {session.created_at && (
+            <div className="gallery-text-small" style={{ color: '#666666', marginTop: 4 }}>
+              {formatDate(session.created_at)}
+            </div>
+          )}
+          {session.duration_ms > 0 && (
+            <div className="gallery-text-small" style={{ color: '#666666', marginTop: 4 }}>
+              Duration: {formatDuration(session.duration_ms)}
+            </div>
+          )}
         </div>
       ) : (
-        <div className="gallery-text-secondary" style={{ marginBottom: 16 }}>
-          No session selected
+        <div>
+          {display.image.caption && (
+            <div className="gallery-text-secondary" style={{ marginBottom: 16 }}>
+              {display.image.caption}
+            </div>
+          )}
+          <button
+            className="gallery-button gallery-button-text"
+            onClick={() => setShowPrepare(true)}
+          >
+            start seeing session
+          </button>
         </div>
       )}
-      {/* TODO: Add prepare/session/survey logic here */}
     </div>
   );
 };
 
-export default GalleryDetailPanel; 
+export default GalleryDetailPanel;

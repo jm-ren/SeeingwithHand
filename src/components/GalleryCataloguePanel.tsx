@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getSessionsByImage, SessionData } from '../lib/supabase';
 import { getImages, getImageThumbnail, ImageInfo } from '../lib/images';
+import SessionThumbnail from './SessionThumbnail';
 
 interface GalleryCataloguePanelProps {
   onHover: (image: any, session?: any) => void;
@@ -108,39 +109,43 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
               {img.title}
             </div>
             
-            {/* Display real sessions */}
-            <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {sessions.map((session: SessionData) => (
-                <div
-                  key={session.id}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#FFFFFF',
-                    border: '1px solid #CCCCCC',
-                    borderRadius: '0',
-                    cursor: 'pointer',
-                    boxShadow: locked?.imageId === img.id && locked.sessionId === session.id ? '0 0 0 2px #333333' : undefined,
-                  }}
-                  className="gallery-text-small"
-                  onMouseEnter={() => handleHover(img, session)}
-                  onClick={() => handleClick(img, session)}
-                >
-                  <span>{session.session_name}</span>
-                  <span style={{ color: '#666666', fontSize: '0.9em' }}>
-                    ({session.nickname || 'anonymous'})
-                  </span>
-                </div>
-              ))}
-            </div>
-            
-            <div style={{ marginTop: 16 }}>
-              <button
-                className="gallery-button gallery-button-text"
-                onClick={() => handleClick(img, { id: 'new', name: 'start session' })}
-              >
-                start session
-              </button>
-            </div>
+            {sessions.length > 0 && (
+              <div style={{
+                marginTop: 12,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+                gap: 8,
+              }}>
+                {sessions.map((session: SessionData) => (
+                  <div
+                    key={session.id}
+                    style={{
+                      cursor: 'pointer',
+                      background: '#FFFFFF',
+                      border: '1px solid #CCCCCC',
+                      boxShadow: locked?.imageId === img.id && locked.sessionId === session.id
+                        ? '0 0 0 2px #333333'
+                        : undefined,
+                      overflow: 'hidden',
+                    }}
+                    onMouseEnter={() => handleHover(img, session)}
+                    onClick={() => handleClick(img, session)}
+                  >
+                    <SessionThumbnail
+                      imageSrc={img.thumbnail}
+                      annotations={session.annotations || []}
+                      alt={`${session.session_name} traces`}
+                    />
+                    <div style={{ padding: '4px 8px' }} className="gallery-text-small">
+                      <div>{session.session_name}</div>
+                      <div style={{ color: '#666666', fontSize: '0.9em' }}>
+                        {session.nickname || 'anonymous'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         );
       })}
