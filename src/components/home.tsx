@@ -11,6 +11,7 @@ import { Mic, MicOff } from "lucide-react";
 import ColorPalette from "./ColorPalette";
 import { exportAndDownloadTraces } from "../lib/svgExporter";
 import { appSettings } from "../config/appConfig";
+import { getImages, getImageThumbnail, ImageInfo } from "../lib/images";
 
 interface Point {
   x: number;
@@ -28,14 +29,6 @@ interface TraceItem {
   duration?: number;
 }
 
-// Map imageId to image file path
-const imageMap: Record<string, string> = {
-  img1: '/images/image 002_agnes martin.png',
-  img2: '/images/image 001_villa savoye.png',
-  img3: '/images/image 003_morandi_landscape_cottage.png',
-  img4: '/images/image 004_brancusi studio.png',
-};
-
 interface HomeProps {
   imageId?: string;
   sessionId?: string;
@@ -45,15 +38,16 @@ interface HomeProps {
 const sessionNameCounter: Record<string, number> = {};
 
 const Home: React.FC<HomeProps> = ({ imageId, sessionId, onSessionEnd }) => {
-  // Determine image URL based on imageId
-  const imageUrl = imageId && imageMap[imageId]
-    ? imageMap[imageId]
-    : "https://images2.dwell.com/photos/6133553759298379776/6297915443342360576/original.jpg?auto=format&q=35&w=1600";
-  
-  // Debug logging
-  console.log('[Home] imageId:', imageId);
-  console.log('[Home] imageUrl:', imageUrl);
-  console.log('[Home] imageMap:', imageMap);
+  const [imageUrl, setImageUrl] = useState<string>('');
+
+  useEffect(() => {
+    getImages().then(images => {
+      const match = images.find(img => img.id === imageId);
+      if (match) {
+        setImageUrl(getImageThumbnail(match));
+      }
+    });
+  }, [imageId]);
 
   // State management
   const [selectedCount, setSelectedCount] = useState(0);

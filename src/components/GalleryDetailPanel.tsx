@@ -139,10 +139,10 @@ const GalleryDetailPanel: React.FC<GalleryDetailPanelProps> = ({ hovered, select
       {display.session ? (
         <div style={{ marginBottom: 16 }}>
           <div className="gallery-title-sub">
-            {display.session.name}
+            {display.session.session_name || display.session.name}
           </div>
           <div className="gallery-text-small" style={{ color: '#666666' }}>
-            by {display.session.user}
+            by {display.session.nickname || display.session.user || 'anonymous'}
           </div>
         </div>
       ) : (

@@ -1,82 +1,98 @@
+import { Annotation, Group } from '../types/annotations';
+import { SessionEvent } from '../context/ApplicationContext';
+import { AdditionalContextItem } from '../components/AdditionalContextFolder';
+
 // Check if Supabase credentials are available
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 const isSupabaseConfigured = supabaseUrl && supabaseAnonKey;
 
-// Types for session data
+// === Session Data Types === //
+
 export interface SessionData {
-  id?: string;
+  id: string;
   session_name: string;
-  image_id: string;
   session_id: string;
-  annotations: any[];
-  groups: any[];
-  audio_url?: string;
-  audio_started_at?: number;
-  survey_data?: any;
-  created_at?: string;
-  updated_at?: string;
+  image_id: string;
+
+  annotations: Annotation[];
+  groups: Group[];
+  session_events: SessionEvent[];
+
+  audio_url: string | null;
+  audio_started_at: number | null;
+
+  session_start_time: number;
+  session_end_time: number;
+  duration_ms: number;
+
+  nickname: string;
+  location: string;
+  weather: string;
+  mood: string;
+  feelings: string;
+
+  additional_context: AdditionalContextItem[];
+
+  is_public: boolean;
+  share_slug: string | null;
+
+  created_at: string;
+  updated_at: string;
 }
 
-// Mock data for development
-const mockSessions: SessionData[] = [
-  {
-    id: 'mock-1',
-    session_name: 'Sample Session 1',
-    image_id: 'img1',
-    session_id: 'session-mock-1',
-    annotations: [],
-    groups: [],
-    survey_data: { nickname: 'demo_user' },
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'mock-2',
-    session_name: 'Sample Session 2',
-    image_id: 'img2',
-    session_id: 'session-mock-2',
-    annotations: [],
-    groups: [],
-    survey_data: { nickname: 'test_user' },
-    created_at: new Date().toISOString(),
-  },
-];
+export type SessionDataInput = Omit<SessionData, 'id' | 'created_at' | 'updated_at'>;
 
-let sessionStorage: SessionData[] = [...mockSessions];
+// === localStorage persistence === //
 
-// Initialize Supabase client only if configured
+const STORAGE_KEY = 'co-see-sessions';
+
+function readStorage(): SessionData[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.error('Failed to read sessions from localStorage:', e);
+    return [];
+  }
+}
+
+function writeStorage(sessions: SessionData[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+  } catch (e) {
+    console.error('Failed to write sessions to localStorage:', e);
+  }
+}
+
+// === Initialize Supabase client (disabled until go-live) === //
+
 let supabase: any = null;
 
 if (isSupabaseConfigured) {
-  console.log('Supabase credentials found, but skipping initialization to avoid 504 errors');
-  console.log('To enable Supabase, ensure proper network access and restart the dev server');
-  // TODO: Uncomment when ready to use real Supabase
-  // try {
-  //   const { createClient } = require("@supabase/supabase-js");
-  //   supabase = createClient(supabaseUrl, supabaseAnonKey);
-  //   console.log('Supabase client initialized successfully');
-  // } catch (error) {
-  //   console.error('Failed to initialize Supabase:', error);
-  // }
+  console.log('Supabase credentials found, but skipping initialization (using localStorage)');
 } else {
-  console.log('Supabase credentials not found. Using mock data mode.');
+  console.log('Supabase not configured. Using localStorage for session persistence.');
 }
 
 export { supabase };
 
-// Save a complete session
-export async function saveSession(sessionData: Omit<SessionData, 'id' | 'created_at' | 'updated_at'>): Promise<SessionData | null> {
+// === CRUD operations === //
+
+export async function saveSession(input: SessionDataInput): Promise<SessionData | null> {
   if (!supabase) {
-    console.log('Mock mode: Saving session data:', sessionData);
-    
+    const now = new Date().toISOString();
     const newSession: SessionData = {
-      id: `mock-${Date.now()}`,
-      ...sessionData,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      id: `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      ...input,
+      created_at: now,
+      updated_at: now,
     };
-    
-    sessionStorage.push(newSession);
+
+    const sessions = readStorage();
+    sessions.push(newSession);
+    writeStorage(sessions);
+    console.log('Session saved to localStorage:', newSession.session_name);
     return newSession;
   }
 
@@ -84,14 +100,25 @@ export async function saveSession(sessionData: Omit<SessionData, 'id' | 'created
     const { data, error } = await supabase
       .from('sessions')
       .insert({
-        session_name: sessionData.session_name,
-        image_id: sessionData.image_id,
-        session_id: sessionData.session_id,
-        annotations: sessionData.annotations,
-        groups: sessionData.groups,
-        audio_url: sessionData.audio_url,
-        audio_started_at: sessionData.audio_started_at,
-        survey_data: sessionData.survey_data,
+        session_name: input.session_name,
+        session_id: input.session_id,
+        image_id: input.image_id,
+        annotations: input.annotations,
+        groups: input.groups,
+        session_events: input.session_events,
+        audio_url: input.audio_url,
+        audio_started_at: input.audio_started_at,
+        session_start_time: input.session_start_time,
+        session_end_time: input.session_end_time,
+        duration_ms: input.duration_ms,
+        nickname: input.nickname,
+        location: input.location,
+        weather: input.weather,
+        mood: input.mood,
+        feelings: input.feelings,
+        additional_context: input.additional_context,
+        is_public: input.is_public,
+        share_slug: input.share_slug,
       })
       .select()
       .single();
@@ -100,7 +127,6 @@ export async function saveSession(sessionData: Omit<SessionData, 'id' | 'created
       console.error('Error saving session:', error);
       return null;
     }
-
     return data;
   } catch (error) {
     console.error('Error saving session:', error);
@@ -108,11 +134,11 @@ export async function saveSession(sessionData: Omit<SessionData, 'id' | 'created
   }
 }
 
-// Fetch all sessions for a specific image
 export async function getSessionsByImage(imageId: string): Promise<SessionData[]> {
   if (!supabase) {
-    console.log('Mock mode: Fetching sessions for image:', imageId);
-    return sessionStorage.filter(session => session.image_id === imageId);
+    return readStorage()
+      .filter(s => s.image_id === imageId)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }
 
   try {
@@ -126,7 +152,6 @@ export async function getSessionsByImage(imageId: string): Promise<SessionData[]
       console.error('Error fetching sessions:', error);
       return [];
     }
-
     return data || [];
   } catch (error) {
     console.error('Error fetching sessions:', error);
@@ -134,11 +159,9 @@ export async function getSessionsByImage(imageId: string): Promise<SessionData[]
   }
 }
 
-// Fetch a specific session by ID
 export async function getSessionById(sessionId: string): Promise<SessionData | null> {
   if (!supabase) {
-    console.log('Mock mode: Fetching session:', sessionId);
-    return sessionStorage.find(session => session.session_id === sessionId) || null;
+    return readStorage().find(s => s.session_id === sessionId) || null;
   }
 
   try {
@@ -152,7 +175,6 @@ export async function getSessionById(sessionId: string): Promise<SessionData | n
       console.error('Error fetching session:', error);
       return null;
     }
-
     return data;
   } catch (error) {
     console.error('Error fetching session:', error);
@@ -160,10 +182,36 @@ export async function getSessionById(sessionId: string): Promise<SessionData | n
   }
 }
 
-// Upload audio file
+export async function deleteSession(sessionId: string): Promise<boolean> {
+  if (!supabase) {
+    const sessions = readStorage();
+    const filtered = sessions.filter(s => s.session_id !== sessionId);
+    writeStorage(filtered);
+    return true;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('sessions')
+      .delete()
+      .eq('session_id', sessionId);
+
+    if (error) {
+      console.error('Error deleting session:', error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('Error deleting session:', error);
+    return false;
+  }
+}
+
+// === File uploads (mock in localStorage mode) === //
+
 export async function uploadAudioFile(audioBlob: Blob, fileName: string): Promise<string | null> {
   if (!supabase) {
-    console.log('Mock mode: Audio upload simulated for:', fileName);
+    console.log('localStorage mode: Audio upload simulated for:', fileName);
     return `mock-audio-url-${fileName}`;
   }
 
@@ -191,10 +239,9 @@ export async function uploadAudioFile(audioBlob: Blob, fileName: string): Promis
   }
 }
 
-// Upload additional context file
 export async function uploadContextFile(file: File, fileName: string): Promise<string | null> {
   if (!supabase) {
-    console.log('Mock mode: Context file upload simulated for:', fileName);
+    console.log('localStorage mode: Context file upload simulated for:', fileName);
     return `mock-context-file-url-${fileName}`;
   }
 
@@ -219,31 +266,5 @@ export async function uploadContextFile(file: File, fileName: string): Promise<s
   } catch (error) {
     console.error('Error uploading context file:', error);
     return null;
-  }
-}
-
-// Delete a session
-export async function deleteSession(sessionId: string): Promise<boolean> {
-  if (!supabase) {
-    console.log('Mock mode: Deleting session:', sessionId);
-    sessionStorage = sessionStorage.filter(session => session.session_id !== sessionId);
-    return true;
-  }
-
-  try {
-    const { error } = await supabase
-      .from('sessions')
-      .delete()
-      .eq('session_id', sessionId);
-
-    if (error) {
-      console.error('Error deleting session:', error);
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error deleting session:', error);
-    return false;
   }
 }

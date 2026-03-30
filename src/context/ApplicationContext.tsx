@@ -99,6 +99,7 @@ interface ApplicationContextType {
   isSessionActive: boolean;
   sessionId: string | null;
   sessionStartTime: number | null;
+  sessionEvents: SessionEvent[];
   countdown: number;
   showCountdown: boolean;
   isRecording: boolean;
@@ -529,6 +530,7 @@ export const ApplicationProvider: React.FC<ApplicationProviderProps> = ({
     isSessionActive: state.isSessionActive,
     sessionId: state.sessionId,
     sessionStartTime: state.sessionStartTime,
+    sessionEvents: state.sessionEvents,
     countdown: state.countdown,
     showCountdown: state.showCountdown,
     isRecording: state.isRecording,

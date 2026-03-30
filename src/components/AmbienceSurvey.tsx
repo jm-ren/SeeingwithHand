@@ -531,21 +531,26 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const submissionData = {
-      ...formData,
+    onSubmit({
+      nickname: formData.nickname,
+      location: formData.location,
+      weather: formData.weather,
+      mood: formData.mood,
+      feelings: formData.feelings,
       additionalContext: contextItems,
-      sessionMetadata: {
-        sessionName,
-        date: new Date().toLocaleDateString(),
-        time: new Date().toLocaleTimeString(),
-        duration: '4 mins'
-      }
-    };
-    
-    onSubmit(submissionData);
+    });
   };
 
-  // Get current session metadata
+  const formatDuration = () => {
+    if (!sessionStartTime) return '';
+    const ms = Date.now() - sessionStartTime;
+    const totalSec = Math.floor(ms / 1000);
+    const mins = Math.floor(totalSec / 60);
+    const secs = totalSec % 60;
+    if (mins === 0) return `${secs}s`;
+    return `${mins} min${mins !== 1 ? 's' : ''} ${secs}s`;
+  };
+
   const getCurrentDate = () => {
     const now = new Date();
     return `${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getDate().toString().padStart(2, '0')}/${now.getFullYear()}`;
@@ -613,7 +618,7 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
                 letterSpacing: '0.5px',
                 color: '#666666'
               }}>
-                {getCurrentDate()} • 4 mins
+                {getCurrentDate()} • {formatDuration()}
               </div>
             </div>
 

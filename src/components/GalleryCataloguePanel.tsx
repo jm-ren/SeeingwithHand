@@ -1,29 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getSessionsByImage, SessionData } from '../lib/supabase';
-
-// Mock data structure for images (keep for now, but sessions will be real)
-const mockImages = [
-  {
-    id: 'img1',
-    title: 'Agnes Martin in New Mexico',
-    thumbnail: '/images/image 002_agnes martin.png',
-  },
-  {
-    id: 'img2',
-    title: 'Villa Savoye',
-    thumbnail: '/images/image 001_villa savoye.png',
-  },
-  {
-    id: 'img3',
-    title: 'Morandi Landscape Cottage',
-    thumbnail: '/images/image 003_morandi_landscape_cottage.png',
-  },
-  {
-    id: 'img4',
-    title: 'Brancusi Studio',
-    thumbnail: '/images/image 004_brancusi studio.png',
-  },
-];
+import { getImages, getImageThumbnail, ImageInfo } from '../lib/images';
 
 interface GalleryCataloguePanelProps {
   onHover: (image: any, session?: any) => void;
@@ -37,30 +14,34 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
   selected = null,
 }) => {
   const [locked, setLocked] = useState<{ imageId: string; sessionId?: string } | null>(selected);
+  const [images, setImages] = useState<(ImageInfo & { thumbnail: string })[]>([]);
   const [imageSessions, setImageSessions] = useState<{ [imageId: string]: SessionData[] }>({});
   const [loading, setLoading] = useState(true);
 
-  // Fetch sessions for all images
   useEffect(() => {
-    const fetchAllSessions = async () => {
+    const fetchAll = async () => {
       setLoading(true);
+      const imageList = await getImages();
+      const withThumbs = imageList.map(img => ({
+        ...img,
+        thumbnail: getImageThumbnail(img),
+      }));
+      setImages(withThumbs);
+
       const sessionsByImage: { [imageId: string]: SessionData[] } = {};
-      
-      for (const image of mockImages) {
+      for (const image of imageList) {
         try {
-          const sessions = await getSessionsByImage(image.id);
-          sessionsByImage[image.id] = sessions;
+          sessionsByImage[image.id] = await getSessionsByImage(image.id);
         } catch (error) {
           console.error(`Error fetching sessions for image ${image.id}:`, error);
           sessionsByImage[image.id] = [];
         }
       }
-      
       setImageSessions(sessionsByImage);
       setLoading(false);
     };
 
-    fetchAllSessions();
+    fetchAll();
   }, []);
 
   const handleHover = (image: any, session?: any) => {
@@ -101,7 +82,7 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
       background: '#FBFAF8', 
       height: '100%'
     }}>
-      {mockImages.map((img) => {
+      {images.map((img) => {
         const sessions = imageSessions[img.id] || [];
         
         return (
@@ -146,7 +127,7 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
                 >
                   <span>{session.session_name}</span>
                   <span style={{ color: '#666666', fontSize: '0.9em' }}>
-                    ({session.survey_data?.nickname || 'anonymous'})
+                    ({session.nickname || 'anonymous'})
                   </span>
                 </div>
               ))}
@@ -167,4 +148,4 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
   );
 };
 
-export default GalleryCataloguePanel; 
+export default GalleryCataloguePanel;
