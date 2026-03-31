@@ -31,7 +31,7 @@ const GalleryLayout: React.FC = () => {
           display: flex;
           height: calc(100vh - 80px);
           width: 100%;
-          max-width: 2072px;
+          max-width: 1161px;
           min-width: 800px;
           scrollbar-width: thin;
           scrollbar-color: #CCCCCC transparent;

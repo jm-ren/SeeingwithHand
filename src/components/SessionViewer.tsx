@@ -161,9 +161,21 @@ const SessionViewer: React.FC<SessionViewerProps> = ({ session, imageUrl, imageT
     return () => window.removeEventListener('resize', handleResize);
   }, [updateCanvasSize]);
 
+  const hasAutoPlayed = useRef(false);
+
   const handleImageLoad = useCallback(() => {
     updateCanvasSize();
-  }, [updateCanvasSize]);
+    if (!hasAutoPlayed.current && totalDuration > 0) {
+      hasAutoPlayed.current = true;
+      setCurrentTime(0);
+      setIsPlaying(true);
+      const audio = audioRef.current;
+      if (audio && hasAudio) {
+        audio.playbackRate = playbackSpeed;
+        audio.play().catch(() => {});
+      }
+    }
+  }, [updateCanvasSize, totalDuration, hasAudio, playbackSpeed]);
 
   useEffect(() => {
     draw(currentTime);

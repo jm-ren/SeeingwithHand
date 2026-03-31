@@ -10,7 +10,7 @@ interface GalleryDetailPanelProps {
 
 const panelStyle: React.CSSProperties = {
   flex: '1 1 50%',
-  maxWidth: '1032px',
+  maxWidth: '578px',
   minWidth: '400px',
   padding: 36,
   background: '#FBFAF8',

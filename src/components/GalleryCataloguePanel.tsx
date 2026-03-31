@@ -59,7 +59,7 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
     return (
       <div style={{ 
         flex: '1 1 50%', 
-        maxWidth: '1040px',
+        maxWidth: '582px',
         minWidth: '400px',
         padding: 36, 
         background: '#FBFAF8', 
@@ -76,7 +76,7 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
   return (
     <div style={{ 
       flex: '1 1 50%', 
-      maxWidth: '1040px',
+      maxWidth: '582px',
       minWidth: '400px',
       overflowY: 'auto', 
       borderRight: '1px solid #CCCCCC', 
