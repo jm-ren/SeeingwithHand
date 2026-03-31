@@ -252,6 +252,15 @@
   border: none;
 }
 
+.gallery-image-bw img {
+  filter: grayscale(1) contrast(1.05) brightness(0.95);
+  transition: filter 0.5s ease;
+}
+
+.gallery-image-bw:hover img {
+  filter: none;
+}
+
 .gallery-spacing-sm { margin-bottom: 8px; }
 .gallery-spacing-md { margin-bottom: 16px; }
 .gallery-spacing-lg { margin-bottom: 24px; }

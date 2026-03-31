@@ -97,7 +97,7 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
                 cursor: 'pointer',
                 boxShadow: locked?.imageId === img.id && !locked.sessionId ? '0 0 0 2px #333333' : undefined,
               }}
-              className="gallery-image-container"
+              className={`gallery-image-container${locked?.imageId !== img.id ? ' gallery-image-bw' : ''}`}
               onMouseEnter={() => handleHover(img)}
               onClick={() => handleClick(img)}
             >
