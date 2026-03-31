@@ -113,9 +113,10 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
     };
 
     const handleEnded = () => {
-      setIsPlaying(false);
       setCurrentTime(0);
       setAnimationProgress(0);
+      audio.currentTime = 0;
+      audio.play().catch(() => {});
     };
 
     const handleCanPlay = () => {
@@ -179,12 +180,11 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
         console.log('[AmbienceSurvey] Using fallback animation - no valid audio');
         intervalRef.current = setInterval(() => {
           setAnimationProgress(prev => {
-            const increment = 0.8; // 0.8% per 100ms = ~8% per second  
-            const newProgress = Math.min(prev + increment, 100);
+            const increment = 0.8;
+            const newProgress = prev + increment;
             
             if (newProgress >= 100) {
-              setIsPlaying(false);
-              return 100;
+              return 0;
             }
             return newProgress;
           });
@@ -197,12 +197,11 @@ const AmbienceSurvey: React.FC<AmbienceSurveyProps> = ({
             console.log('[AmbienceSurvey] Audio fallback: starting manual animation');
             intervalRef.current = setInterval(() => {
               setAnimationProgress(prev => {
-                const increment = 0.5; // Slower than no-audio case
-                const newProgress = Math.min(prev + increment, 100);
+                const increment = 0.5;
+                const newProgress = prev + increment;
                 
                 if (newProgress >= 100) {
-                  setIsPlaying(false);
-                  return 100;
+                  return 0;
                 }
                 return newProgress;
               });

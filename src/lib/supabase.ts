@@ -1,8 +1,8 @@
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Annotation, Group } from '../types/annotations';
 import { SessionEvent } from '../context/ApplicationContext';
 import { AdditionalContextItem } from '../components/AdditionalContextFolder';
 
-// Check if Supabase credentials are available
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 const isSupabaseConfigured = supabaseUrl && supabaseAnonKey;
@@ -65,12 +65,11 @@ function writeStorage(sessions: SessionData[]): void {
   }
 }
 
-// === Initialize Supabase client (disabled until go-live) === //
-
-let supabase: any = null;
+let supabase: SupabaseClient | null = null;
 
 if (isSupabaseConfigured) {
-  console.log('Supabase credentials found, but skipping initialization (using localStorage)');
+  supabase = createClient(supabaseUrl, supabaseAnonKey);
+  console.log('Supabase client initialized.');
 } else {
   console.log('Supabase not configured. Using localStorage for session persistence.');
 }

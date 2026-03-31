@@ -31,11 +31,17 @@ export function useAudioRecorder() {
       }
       
       console.log('[AudioRecorder] Requesting microphone access...');
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { channelCount: 1 }
+      });
       streamRef.current = stream;
       
       console.log('[AudioRecorder] Microphone access granted, creating MediaRecorder...');
-      const mediaRecorder = new MediaRecorder(stream);
+      const preferredMime = 'audio/webm;codecs=opus';
+      const recorderOptions = MediaRecorder.isTypeSupported(preferredMime)
+        ? { mimeType: preferredMime, audioBitsPerSecond: 48000 }
+        : undefined;
+      const mediaRecorder = new MediaRecorder(stream, recorderOptions);
       mediaRecorderRef.current = mediaRecorder;
       
       mediaRecorder.ondataavailable = (e) => {
@@ -44,13 +50,13 @@ export function useAudioRecorder() {
         }
       };
       
+      const mimeType = mediaRecorder.mimeType || 'audio/webm';
       mediaRecorder.onstop = () => {
         console.log('[AudioRecorder] Recording stopped, total chunks:', chunksRef.current.length);
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const blob = new Blob(chunksRef.current, { type: mimeType });
         setAudioBlob(blob);
         setAudioUrl(URL.createObjectURL(blob));
         console.log('[AudioRecorder] Audio blob created:', blob.size, 'bytes');
-        // Stop all tracks to release microphone access
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop());
           streamRef.current = null;
@@ -105,9 +111,9 @@ export function useAudioRecorder() {
     
     return new Promise<{audioUrl: string | null, audioBlob: Blob | null}>((resolve) => {
       if (mediaRecorderRef.current && (mediaRecorderRef.current.state === 'recording' || mediaRecorderRef.current.state === 'paused')) {
-        // Set up one-time listener for when processing is complete
+        const mimeType = mediaRecorderRef.current.mimeType || 'audio/webm';
         mediaRecorderRef.current.onstop = () => {
-          const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+          const blob = new Blob(chunksRef.current, { type: mimeType });
           const url = URL.createObjectURL(blob);
           
           setAudioBlob(blob);

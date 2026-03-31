@@ -190,9 +190,10 @@ const SessionViewer: React.FC<SessionViewerProps> = ({ session, imageUrl, imageT
       }
 
       if (newTime >= totalDuration) {
-        newTime = totalDuration;
-        setIsPlaying(false);
-        if (hasValidAudio && audio) audio.pause();
+        newTime = 0;
+        if (hasValidAudio && audio) {
+          audio.currentTime = 0;
+        }
       }
 
       setCurrentTime(newTime);
