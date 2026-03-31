@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SessionViewer from './SessionViewer';
+import { toSentenceCase } from '../lib/utils';
 
 interface GalleryDetailPanelProps {
   hovered?: { image: any; session?: any } | null;
@@ -43,7 +44,7 @@ const PrepareSessionPanel: React.FC<{ image: any; onStart: () => void }> = ({ im
         You are about to start a seeing session for:
       </p>
       <div className="gallery-title-sub">
-        {image.title}
+        {toSentenceCase(image.title)}
       </div>
       <div
         className="gallery-image-container"
@@ -112,7 +113,7 @@ const GalleryDetailPanel: React.FC<GalleryDetailPanelProps> = ({ hovered, select
           key={session.id}
           session={session}
           imageUrl={display.image.thumbnail}
-          imageTitle={display.image.title}
+          imageTitle={toSentenceCase(display.image.title)}
         />
       </div>
     );
@@ -121,7 +122,7 @@ const GalleryDetailPanel: React.FC<GalleryDetailPanelProps> = ({ hovered, select
   return (
     <div style={panelStyle}>
       <div className="gallery-title-main">
-        {display.image.title}
+        {toSentenceCase(display.image.title)}
       </div>
       <div
         className="gallery-image-container"

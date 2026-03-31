@@ -4,6 +4,7 @@ import { SessionData, getSessionBySlug } from './lib/supabase';
 import { ImageInfo, getImages, getImageThumbnail } from './lib/images';
 import SessionViewer from './components/SessionViewer';
 import ErrorBoundary from './components/ErrorBoundary';
+import { toSentenceCase } from './lib/utils';
 
 const SharedSessionPage: React.FC = () => {
   const { shareSlug } = useParams<{ shareSlug: string }>();
@@ -126,7 +127,7 @@ const SharedSessionPage: React.FC = () => {
               <SessionViewer
                 session={session}
                 imageUrl={image ? getImageThumbnail(image) : ''}
-                imageTitle={image?.title || session.session_name}
+                imageTitle={toSentenceCase(image?.title || session.session_name)}
                 showComments={false}
               />
             </ErrorBoundary>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getSessionsByImage, SessionData } from '../lib/supabase';
 import { getImages, getImageThumbnail, ImageInfo } from '../lib/images';
 import SessionThumbnail from './SessionThumbnail';
+import { toSentenceCase } from '../lib/utils';
 
 interface GalleryCataloguePanelProps {
   onHover: (image: any, session?: any) => void;
@@ -106,7 +107,7 @@ const GalleryCataloguePanel: React.FC<Partial<GalleryCataloguePanelProps>> = ({
               />
             </div>
             <div className="gallery-title-sub">
-              {img.title}
+              {toSentenceCase(img.title)}
             </div>
             
             {sessions.length > 0 && (
