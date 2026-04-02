@@ -133,6 +133,29 @@ export async function saveSession(input: SessionDataInput): Promise<SessionData 
   }
 }
 
+export async function getAllSessions(): Promise<SessionData[]> {
+  if (!supabase) {
+    return readStorage()
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('sessions')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching all sessions:', error);
+      return [];
+    }
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching all sessions:', error);
+    return [];
+  }
+}
+
 export async function getSessionsByImage(imageId: string): Promise<SessionData[]> {
   if (!supabase) {
     return readStorage()

@@ -30,6 +30,9 @@ The application will run with sample data if Supabase is not configured. You can
 # Copy your project URL and anon key from Supabase dashboard
 VITE_SUPABASE_URL=https://your-project-id.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# Secret passphrase for the /admin page (optional — admin page won't work without it)
+VITE_ADMIN_SECRET=your-secret-passphrase
 ```
 
 2. Get your credentials from Supabase:

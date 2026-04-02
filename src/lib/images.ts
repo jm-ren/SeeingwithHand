@@ -1,3 +1,5 @@
+import { fetchImagesFromSupabase, getSupabaseImageUrl } from './images-api';
+
 export interface ImageInfo {
   id: string;
   filename: string;
@@ -7,12 +9,19 @@ export interface ImageInfo {
   upload_date: string;
   source_url: string;
   display_order: number;
+  storage_path?: string | null;
 }
 
 let cachedImages: ImageInfo[] | null = null;
 
 export async function getImages(): Promise<ImageInfo[]> {
   if (cachedImages) return cachedImages;
+
+  const supabaseImages = await fetchImagesFromSupabase();
+  if (supabaseImages) {
+    cachedImages = supabaseImages;
+    return cachedImages;
+  }
 
   const res = await fetch('/images/images.json');
   const data: ImageInfo[] = await res.json();
@@ -21,7 +30,15 @@ export async function getImages(): Promise<ImageInfo[]> {
   return data;
 }
 
+export function clearImageCache(): void {
+  cachedImages = null;
+}
+
 export function getImageThumbnail(image: ImageInfo): string {
+  if (image.storage_path) {
+    const url = getSupabaseImageUrl(image.storage_path);
+    if (url) return url;
+  }
   return `/images/${image.filename}.png`;
 }
 
